@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace dad_project
 {
-    class Operator
+    public class Operator
     {
         public string Id { get; set; }
         public string[] Input { get; set; }
