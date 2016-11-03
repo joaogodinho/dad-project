@@ -35,6 +35,8 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -43,6 +45,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PMForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PMForm.Designer.cs">
+      <DependentUpon>PMForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Replica.cs" />
@@ -55,10 +63,11 @@
       <Project>{67936986-B186-446A-AB64-C4301812A055}</Project>
       <Name>CommonCode</Name>
     </ProjectReference>
-    <ProjectReference Include="..\dad-project\PuppetMaster.csproj">
-      <Project>{F05C314F-BE30-487A-9BAB-2A13B2E071D8}</Project>
-      <Name>PuppetMaster</Name>
-    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="PMForm.resx">
+      <DependentUpon>PMForm.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
