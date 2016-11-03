@@ -1,4 +1,7 @@
-﻿namespace DADStorm.PuppetMaster
+﻿using PuppetMaster.RemotingInterfaces;
+using System;
+
+namespace DADStorm.PuppetMaster
 {
     class PuppetMaster
     {
@@ -8,7 +11,17 @@
         {
             this.pcs_ips = pcs_ips;
         }
+    }
 
+    delegate void DelLogMsg(string message);
 
+    class PuppetMasterServices : MarshalByRefObject, IPuppetLogger
+    {
+        public static frmPuppetMaster form;
+
+        public void SendMsg(string message)
+        {
+            form.Invoke(new DelLogMsg(form.LogMsg), message);
+        }
     }
 }

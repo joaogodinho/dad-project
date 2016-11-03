@@ -56,6 +56,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PuppetMaster.cs" />
+    <Compile Include="RemotingInterfaces.cs" />
     <EmbeddedResource Include="FrmPuppetMaster.resx">
       <DependentUpon>FrmPuppetMaster.cs</DependentUpon>
     </EmbeddedResource>

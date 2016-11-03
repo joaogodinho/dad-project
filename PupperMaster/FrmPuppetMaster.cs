@@ -11,6 +11,11 @@ namespace DADStorm.PuppetMaster
             InitializeComponent();
         }
 
+        public void LogMsg(string message)
+        {
+            this.txtOutput.AppendText(message + "\r\n");
+        }
+
         private void btnLoad_Click(object sender, EventArgs e)
         {
             Stream stream = null;
