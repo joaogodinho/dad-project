@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace dad_project.Comms
+namespace CommonCode.Comms
 {
     [Serializable]
     public class DTO
@@ -29,6 +29,9 @@ namespace dad_project.Comms
         //values to be used by the Operator in the receiving replica
         public string[] Tuple { get; private set; }
 
+        public CommandType cmdType { get; private set; }
+
+        public enum CommandType : int { PUPPETMASTERINFO = 1, CREATEOPERATOR, STARTOPERATOR, }
 
     }
 }

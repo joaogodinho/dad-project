@@ -2,26 +2,24 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
-using dad_project.Interfaces;
-using dad_project;
-using dad_project.Comms;
+using CommonCode.Interfaces;
+using CommonCode.Comms;
 
-namespace dad_project
+namespace Replica_project
 {
-    public class Replica :ReplicaInterface
+    public class Replica : IReplica
     {
 
         //Add fields as needed
         public string MyId { get; set; }
+        public Uri MyUri { get; set; }
         public List<Tuple<string,string>> Replicas { get; set; }
         public string CurrentSemantic { get; set; }
-        public Operator MyOperator { get; set; }
         
 
-        public Replica(Operator myOperator){
-            MyOperator = myOperator;
-            CurrentSemantic = myOperator.Id;
-
+        public Replica(string id, string myurl){
+            MyId = id;
+            MyUri = new Uri(myurl);
         }
 
         public Task<bool> processRequest(DTO blob)
@@ -39,5 +37,10 @@ namespace dad_project
 
         }
 
+        public string pingRequest()
+        {
+            return "hey, you reached " + this.MyId + " on uri " + this.MyUri.ToString();
+        }
+        
     }
 }

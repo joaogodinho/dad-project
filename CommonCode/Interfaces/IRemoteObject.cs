@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CommonCode
+namespace CommonCode.Interfaces
 {
-    public class Class1
+    public interface IRemoteObject
     {
+        string pingRequest();
     }
 }

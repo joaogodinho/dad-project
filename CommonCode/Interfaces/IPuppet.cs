@@ -4,12 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Replica_project
+namespace CommonCode.Interfaces
 {
-    class Program
+    public interface IPuppet : IRemoteObject
     {
-        static void Main(string[] args)
-        {
-        }
+        void SendMsg(string message);
+        
     }
 }
