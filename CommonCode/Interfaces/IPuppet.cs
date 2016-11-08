@@ -9,6 +9,5 @@ namespace CommonCode.Interfaces
     public interface IPuppet : IRemoteObject
     {
         void SendMsg(string message);
-        
     }
 }

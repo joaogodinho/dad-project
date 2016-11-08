@@ -17,7 +17,8 @@ namespace ProcessCreationService_project
         private string MyName { get; set; }
         private IPuppet PuppetMaster { get; set; }
         private Dictionary<string, List<IReplica>> replicas;
-
+        private string LoggingLevel { get; set; }
+        private string Semantics { get; set; }
 
         public ProcessCreationService()
         {
@@ -41,6 +42,12 @@ namespace ProcessCreationService_project
 
                         PuppetMaster = (IPuppet)Activator.GetObject(typeof(IPuppet), blob.Sender);
                         Console.WriteLine(PuppetMaster.pingRequest());
+
+                        LoggingLevel = blob.Tuple[DTO.LOGGINGLEVEL];
+                        Semantics = blob.Tuple[DTO.SEMANTICS];
+
+                        Console.WriteLine("LoggingLevel is " + LoggingLevel);
+                        Console.WriteLine("Semantics is " + Semantics);
                         return true;
                     }
                 case CommandType.CREATEOPERATOR:

@@ -7,7 +7,7 @@ using CommonCode.Comms;
 
 namespace Replica_project
 {
-    public class Replica : IReplica
+    public class Replica : MarshalByRefObject, IReplica
     {
 
         //Add fields as needed

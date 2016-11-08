@@ -12,26 +12,38 @@ namespace CommonCode.Comms
         //add fields as desired,
         
 
-        public DTO(string sender, string receiver, string[] tuple)
+        public DTO(CommandType cmd, string sender, string receiver, string[] tuple)
         {
             Sender = sender;
             Receiver = receiver;
             Tuple = tuple;
+            cmdType = cmd;
+        }
+
+        public DTO()
+        {
+
         }
 
 
         //Replica that makes this request
-        public string Sender { get; private set; }
+        public string Sender { get; set; }
 
         //Replica that receives this request
-        public string Receiver { get; private set; }
+        public string Receiver { get; set; }
 
         //values to be used by the Operator in the receiving replica
-        public string[] Tuple { get; private set; }
+        public string[] Tuple { get; set; }
 
-        public CommandType cmdType { get; private set; }
+        public CommandType cmdType { get; set; }
+
 
         public enum CommandType : int { PUPPETMASTERINFO = 1, CREATEOPERATOR, STARTOPERATOR, }
+
+
+
+        public const int LOGGINGLEVEL = 0;
+        public const int SEMANTICS = 1;
 
     }
 }

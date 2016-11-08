@@ -6,9 +6,12 @@ namespace DADStorm.PuppetMaster
 {
     public partial class frmPuppetMaster : Form
     {
+        private PuppetMaster puppet;
+
         public frmPuppetMaster()
         {
             InitializeComponent();
+            puppet = new PuppetMaster(this);
         }
 
         public void LogMsg(string message)
@@ -33,7 +36,23 @@ namespace DADStorm.PuppetMaster
                             {
                                 if (!string.IsNullOrEmpty(s) && !s.StartsWith("%"))
                                 {
-                                    lstScript.Items.Add(s);
+                                    if (s.StartsWith("pcs")) { 
+                                        //add the pcs's to the puppet master
+                                        puppet.AddPCS(s.Split(' ')[1]);
+                                    }
+                                    else if (s.StartsWith("Semantics"))
+                                    {
+                                        puppet.Semantics = s.Split(' ')[1];
+                                    }
+                                    else if (s.StartsWith("LoggingLevel"))
+                                    {
+                                        puppet.LoggingLevel = s.Split(' ')[1];
+                                    }
+                                    else if (s.StartsWith("OP"))
+                                    {
+                                        puppet.ParseAndAddOperator(s);
+                                    }
+                                    else lstScript.Items.Add(s);
                                 }
                             }
                         }
@@ -41,6 +60,10 @@ namespace DADStorm.PuppetMaster
                     lstScript.SelectedIndex = 0;
                     btnStep.Enabled = true;
                     btnRunScript.Enabled = true;
+
+                    puppet.verifyConfiguration();
+
+                    puppet.notifyPcsOfPuppetMaster();
                     // TODO: Stop whatever is happening (stop all OPs, etc)
                 }
                 catch (Exception ex)
@@ -96,7 +119,6 @@ namespace DADStorm.PuppetMaster
         private void btnRunScript_Click(object sender, EventArgs e)
         {
             disableAll();
-            // TODO: Run the script
             enableAll();
         }
     }
