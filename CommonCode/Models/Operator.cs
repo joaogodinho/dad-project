@@ -8,11 +8,12 @@ namespace CommonCode.Models
 {
     public class Operator
     {
-        string id { get; set; }
-        List<string> down_ips { get; set; }
-        int port { get; set; }
-        Tuple<string, string> routing { get; set; }
-        OperatorSpec spec { get; set; }
+        public string Id { get; set; }
+        public string Input { get; set; }
+        public List<Uri> DownIps = new List<Uri>();
+        public int Port { get; set; }
+        public Tuple<string, string> Routing { get; set; }
+        public OperatorSpec Spec { get; set; }
 
     }
 
@@ -54,10 +55,12 @@ namespace CommonCode.Models
     {
         public int Field { get; set; }
         public string Condition { get; set; }
-        public OperatorFilter(int field, string condition)
+        public string Value { get; set; }
+        public OperatorFilter(int field, string condition, string value)
         {
             Field = field;
             Condition = condition;
+            Value = value;
         }
         public override string[] processTuple(string[] tuple)
         {

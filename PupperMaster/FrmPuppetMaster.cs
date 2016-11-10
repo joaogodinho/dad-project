@@ -61,8 +61,6 @@ namespace DADStorm.PuppetMaster
                     btnStep.Enabled = true;
                     btnRunScript.Enabled = true;
 
-                    puppet.verifyConfiguration();
-
                     puppet.notifyPcsOfPuppetMaster();
                     // TODO: Stop whatever is happening (stop all OPs, etc)
                 }

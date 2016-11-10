@@ -44,9 +44,9 @@
     <Compile Include="Comms\DTO.cs" />
     <Compile Include="Interfaces\IProcessCreationService.cs" />
     <Compile Include="Interfaces\IPuppet.cs" />
-    <Compile Include="Interfaces\Options.cs" />
     <Compile Include="Interfaces\IRemoteObject.cs" />
     <Compile Include="Interfaces\IReplica.cs" />
+    <Compile Include="Models\Operator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
