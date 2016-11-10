@@ -36,11 +36,7 @@ namespace DADStorm.PuppetMaster
                             {
                                 if (!string.IsNullOrEmpty(s) && !s.StartsWith("%"))
                                 {
-                                    if (s.StartsWith("pcs")) { 
-                                        //add the pcs's to the puppet master
-                                        puppet.AddPCS(s.Split(' ')[1]);
-                                    }
-                                    else if (s.StartsWith("Semantics"))
+                                    if (s.StartsWith("Semantics"))
                                     {
                                         puppet.Semantics = s.Split(' ')[1];
                                     }
@@ -55,18 +51,20 @@ namespace DADStorm.PuppetMaster
                                     else lstScript.Items.Add(s);
                                 }
                             }
+                            // File has been parsed, we can now send the configs to the PCS'
+                            puppet.SendConfigToPCS();
                         }
                     }
                     lstScript.SelectedIndex = 0;
                     btnStep.Enabled = true;
                     btnRunScript.Enabled = true;
 
-                    puppet.notifyPcsOfPuppetMaster();
+                    // puppet.notifyPCS();
                     // TODO: Stop whatever is happening (stop all OPs, etc)
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error: Could not read file from disk. Original error: " + ex.Message);
+                    MessageBox.Show("Error: Could not parse the configuration file. Original error: " + ex.Message);
                 }
             }
         }
@@ -84,7 +82,7 @@ namespace DADStorm.PuppetMaster
             }
 
             disableAll();
-            // TODO: Run the extracted command
+            puppet.ParseCommand(itemVal);
             enableAll();
             // Auto scroll the script
             lstScript.TopIndex = lstScript.SelectedIndex - 2;

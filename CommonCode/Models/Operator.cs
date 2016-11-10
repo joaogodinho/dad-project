@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 
 namespace CommonCode.Models
 {
+    [Serializable]
     public class Operator
     {
         public string Id { get; set; }
+        public string PCS { get; set; }
         public string Input { get; set; }
         public List<Uri> DownIps = new List<Uri>();
         public int Port { get; set; }
@@ -18,11 +20,13 @@ namespace CommonCode.Models
         public OperatorSpec Spec { get; set; }
     }
 
+    [Serializable]
     public abstract class OperatorSpec
     {
         public abstract string[] processTuple(string[] tuple);
     }
-
+    
+    [Serializable]
     public class OperatorCount : OperatorSpec
     {
         public int CurrentCount = 0;
@@ -33,6 +37,8 @@ namespace CommonCode.Models
         }
     }
 
+    // TODO Use HashSet instead of List
+    [Serializable]
     public class OperatorUniq : OperatorSpec
     {
         public int FieldNumber { get; set; }
@@ -53,6 +59,7 @@ namespace CommonCode.Models
         }
     }
 
+    [Serializable]
     public class OperatorDup : OperatorSpec
     {
         public override string[] processTuple(string[] tuple)
@@ -61,6 +68,8 @@ namespace CommonCode.Models
         }
     }
 
+    // TODO Define a lambda or whatever C# calls it to spare the switch
+    [Serializable]
     public class OperatorFilter : OperatorSpec
     {
         public int Field { get; set; }
@@ -89,6 +98,8 @@ namespace CommonCode.Models
         }
     }
 
+    // TODO Test this implementation
+    [Serializable]
     public class OperatorCustom : OperatorSpec
     {
         public string Dll { get; set; }

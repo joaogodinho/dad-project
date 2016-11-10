@@ -8,6 +8,6 @@ namespace CommonCode.Interfaces
 {
     public interface IRemoteObject
     {
-        string pingRequest();
+        string PingRequest();
     }
 }

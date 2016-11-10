@@ -1,4 +1,5 @@
 ﻿using CommonCode.Comms;
+using CommonCode.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,8 @@ namespace CommonCode.Interfaces
 {
     public interface IProcessCreationService : IRemoteObject
     {
-        bool processTask(DTO blob);
+        void Config(string loglevel, string semantics);
+        void AddOperator(Operator op);
+        bool ProcessTask(DTO blob);
     }
 }

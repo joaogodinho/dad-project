@@ -5,10 +5,9 @@ using System.Threading;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels.Tcp;
-using CommonCode.Comms;
 using CommonCode.Models;
-using static CommonCode.Comms.DTO;
 using System.Collections.Generic;
+using ProcessCreationService_project;
 
 namespace DADStorm.PuppetMaster
 {
@@ -16,63 +15,81 @@ namespace DADStorm.PuppetMaster
     {
         private static frmPuppetMaster MyForm;
 
-        private const string NAME = "puppetmaster";
+        public const int PORT = 10000;
+        public const string NAME = "puppetmaster";
 
         public string LoggingLevel { get; set; }
         public string Semantics { get; set; }
 
-        private Dictionary<string, IProcessCreationService> PcsDictionary = new Dictionary<string, IProcessCreationService>();
-
-        private Dictionary<string, List<Operator>> Operators = new Dictionary<string, List<Operator>>();
-
+        // <URL, PCS>
+        private Dictionary<string, IProcessCreationService> DPCS = new Dictionary<string, IProcessCreationService>();
+        // <OP_ID, Operator[]>
+        private Dictionary<string, List<Operator>> DOperators = new Dictionary<string, List<Operator>>();
 
         public PuppetMaster(frmPuppetMaster myform)
         {
             MyForm = myform;
 
             //Register this PuppetMaster
-            ChannelServices.RegisterChannel(new TcpChannel(10000), false);
+            ChannelServices.RegisterChannel(new TcpChannel(PORT), false);
             RemotingServices.Marshal(this, NAME, typeof(IPuppet));            
         }
 
-        //Add a pcs, test the connection just for debugging, they should be reliable and not a fault point
-        public bool AddPCS(string pcs_ip)
+        //Add a pcs, test the connection 
+        public void AddAndTestPCS(string uri)
         {
             IProcessCreationService pcs = null;
-            PcsDictionary.TryGetValue(pcs_ip, out pcs);
+
+            DPCS.TryGetValue(uri, out pcs);
+            // New PCS endpoint
             if(pcs == null)
             {
                 try {
-                    pcs = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), pcs_ip);
-                    WriteMessage("Sending ping to pcs @ " + pcs_ip);
-                    var response = pcs.pingRequest();
-                    WriteMessage("Response was: " + response);
-                    PcsDictionary.Add(pcs_ip, pcs);
+                    pcs = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), uri);
+                    WriteMessage("Checking PCS@" + uri + "...");
+                    var response = pcs.PingRequest();
+                    WriteMessage("Got response: " + response);
+                    DPCS.Add(uri, pcs);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    this.SendMsg("failed to add pcs @ " + pcs_ip + " Error was " + e.Message);
-                    return false;
+                    throw;
                 }
             }
-            return true;
         }
 
-        public void notifyPcsOfPuppetMaster()
+        internal void SendConfigToPCS()
         {
-            foreach (string pcs_ip in PcsDictionary.Keys)
+            // Notify each PCS of the configuration
+            foreach (KeyValuePair<string, IProcessCreationService> pcs in DPCS)
             {
-                WriteMessage("Notifying pcs @ " + pcs_ip);
-                DTO message = new DTO()
-                {
-                    cmdType = CommandType.PUPPETMASTERINFO,
-                    Sender = "tcp://127.0.0.1:10000/puppetmaster",
-                    Receiver = pcs_ip,
-                    Tuple = new string[] { LoggingLevel, Semantics }
-                };
-                var response = PcsDictionary[pcs_ip].processTask(message);
-                WriteMessage("Response was from pcs @ " + pcs_ip + " was: " + response);
+                WriteMessage("Sending config to " + pcs.Key + "...");
+                pcs.Value.Config(LoggingLevel, Semantics);
             }
+            // Notify each PCS of their Operators
+            foreach (KeyValuePair<string, List<Operator>> node in DOperators)
+            {
+                foreach (Operator operatorRep in node.Value)
+                {
+                    WriteMessage("Sending opeartor " + operatorRep.Id + " to " + operatorRep.PCS + "...");
+                    // If this should ever be null, someone screwed up, not me....
+                    IProcessCreationService pcs = DPCS[operatorRep.PCS];
+                    pcs.AddOperator(operatorRep);
+                }
+            }
+        }
+
+        private enum EConfig
+        {
+            ID = 0,
+            INPUT_KEYWORD,
+            INPUT_VALUE,
+            REP_KEYWORD,
+            REP_VALUE,
+            ROUTE_KEYWORD,
+            ROUTE_VALUE,
+            ADDR_KEYWORD,
+            ADDR_START
         }
 
         internal void ParseAndAddOperator(string s)
@@ -80,45 +97,53 @@ namespace DADStorm.PuppetMaster
             Operator op = new Operator();
             string[] values = s.Split(' ');
 
-            op.Id = values[0];
+            op.Id = values[(int)EConfig.ID];
 
-            Debug.Assert(values[1].ToLower() == "input_ops");
-            op.Input = values[2];
+            Debug.Assert(values[(int)EConfig.INPUT_KEYWORD].ToLower() == "input_ops");
+            op.Input = values[(int)EConfig.INPUT_VALUE];
 
-            Debug.Assert(values[3].ToLower() == "rep_fact");
+            Debug.Assert(values[(int)EConfig.REP_KEYWORD].ToLower() == "rep_fact");
             // TODO Use replicas variable for final submission
-            int replicas = int.Parse(values[4]);
+            int replicas = int.Parse(values[(int)EConfig.REP_VALUE]);
 
-            Debug.Assert(values[5].ToLower() == "routing");
+            Debug.Assert(values[(int)EConfig.ROUTE_KEYWORD].ToLower() == "routing");
             // TODO Change to deal with other routing methods
             op.Routing = new Tuple<string, string>("primary", "");
 
-            Debug.Assert(values[7].ToLower() == "address");
-            // TODO Change to deal with multiple replicas
+            Debug.Assert(values[(int)EConfig.ADDR_KEYWORD].ToLower() == "address");
             List<Uri> uris = new List<Uri>();
             for (int i = 0; i < replicas; i++)
             {
-                string[] temp = values[8 + i].Split(',');
-                uris.Add(new Uri(values[8 + i].Split(',')[0]));
+                string[] temp = values[(int)EConfig.ADDR_START + i].Split(',');
+                Uri uri = new Uri(values[(int)EConfig.ADDR_START + i].Split(',')[0]);
+                uris.Add(uri);
+                // Seems like a good time to try and connect to the PCS that should be on this IP
+                AddAndTestPCS(ProcessCreationService.BuildURI(uri.Host));
             }
+            // TODO Change to deal with multiple replicas. There should be a list of operators, in case of multiple replicas, but f'it for now
             op.Port = uris[0].Port;
+            op.PCS = ProcessCreationService.BuildURI(uris[0].Host);
 
-            Debug.Assert(values[8 + replicas].ToLower() == "operator_spec");
+            int op_keyword = (int)EConfig.ADDR_START + replicas;
+            Debug.Assert(values[op_keyword].ToLower() == "operator_spec");
             OperatorSpec operation;
             string[] filterParams;
-            switch (values[8 + replicas + 1].ToLower())
+            switch (values[op_keyword + 1].ToLower())
             {
                 case "filter":
-                    filterParams = values[8 + replicas + 2].Split(',');
+                    filterParams = values[op_keyword + 2].Split(',');
                     operation = new OperatorFilter(int.Parse(filterParams[0]), filterParams[1], filterParams[2]);
                     break;
                 case "custom":
-                    filterParams = values[8 + replicas + 2].Split(',');
+                    filterParams = values[op_keyword + 2].Split(',');
                     operation = new OperatorCustom(filterParams[0], filterParams[1], filterParams[2]);
                     break;
                 case "uniq":
-                    int field = int.Parse(values[8 + replicas + 2]);
+                    int field = int.Parse(values[op_keyword + 2]);
                     operation = new OperatorUniq(field);
+                    break;
+                case "count":
+                    operation = new OperatorCount();
                     break;
                 case "dup":
                     operation = new OperatorDup();
@@ -131,10 +156,10 @@ namespace DADStorm.PuppetMaster
             // TODO Change to create list with all replicas
             List<Operator> opList = new List<Operator>();
             opList.Add(op);
-            Operators.Add(op.Id, opList);
+            DOperators.Add(op.Id, opList);
 
             List<Operator> receivingOperators = null;
-            Operators.TryGetValue(op.Input, out receivingOperators);
+            DOperators.TryGetValue(op.Input, out receivingOperators);
             // So it doesn't blow up if the operators are declared in a wrong order
             if (receivingOperators!= null)
             {
@@ -149,10 +174,36 @@ namespace DADStorm.PuppetMaster
             }
         }
 
-        internal void verifyConfiguration()
+        public void ParseCommand(string sCommand)
         {
-            LoggingLevel = string.IsNullOrEmpty(LoggingLevel) ? "light" : LoggingLevel;
-            Semantics = string.IsNullOrEmpty(Semantics) ? "at-most-once" : Semantics;
+            string[] values = sCommand.Split(' ');
+            Command command;
+            switch (values[0].ToLower())
+            {
+                case "start":
+                    command = new CommandStart(values[1]);
+                    break;
+                case "interval":
+                    command = new CommandInterval(values[1], int.Parse(values[2]));
+                    break;
+                case "status":
+                    command = new CommandStatus();
+                    break;
+                case "crash":
+                    command = new CommandCrash(values[1], int.Parse(values[2]));
+                    break;
+                case "freeze":
+                    command = new CommandFreeze(values[1], int.Parse(values[2]));
+                    break;
+                case "unfreeze":
+                    command = new CommandUnfreeze(values[1], int.Parse(values[2]));
+                    break;
+                case "wait":
+                    command = new CommandWait(int.Parse(values[2]));
+                    break;
+                default:
+                    throw new Exception("Unknown command.");
+            }
         }
 
         public void SendMsg(string message)
@@ -165,9 +216,9 @@ namespace DADStorm.PuppetMaster
             MyForm.Invoke(new DelLogMsg(MyForm.LogMsg), (string)state);
         }
 
-        public string pingRequest()
+        public string PingRequest()
         {
-            return "hey, you reached The PuppetMaster";
+            return "PONG";
         }
         
         delegate void DelLogMsg(string message);

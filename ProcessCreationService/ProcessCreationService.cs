@@ -8,11 +8,15 @@ using CommonCode.Comms;
 using System.Diagnostics;
 using static CommonCode.Comms.DTO;
 using System.IO;
+using CommonCode.Models;
 
 namespace ProcessCreationService_project
 {
     public class ProcessCreationService : MarshalByRefObject, IProcessCreationService
     {
+        public const int PORT = 10001;
+        public const string NAME = "pcs";
+
         private Uri MyUri { get; set; }
         private string MyName { get; set; }
         private IPuppet PuppetMaster { get; set; }
@@ -20,17 +24,39 @@ namespace ProcessCreationService_project
         private string LoggingLevel { get; set; }
         private string Semantics { get; set; }
 
+        public static string BuildURI(string ip)
+        {
+            if (!ip.StartsWith("tcp://"))
+            {
+                ip = "tcp://" + ip;
+            }
+            return ip + ":" + PORT + "/" + NAME;
+        }
+
         public ProcessCreationService()
         {
             replicas = new Dictionary<string, List<IReplica>>();
         }
 
-        public string pingRequest()
+        public string PingRequest()
         {
-            return "hey you reached a process creation service";
+            return "PONG";
         }
 
-        public bool processTask(DTO blob)
+        public void Config(string loglevel, string semantics)
+        {
+            LoggingLevel = loglevel;
+            Semantics = semantics;
+            Console.WriteLine("Got LoggingLevel: " + LoggingLevel);
+            Console.WriteLine("Got Semantics: " + Semantics);
+        }
+
+        public void AddOperator(Operator op)
+        {
+            Console.WriteLine("Adding new operator with ID: " + op.Id);
+        }
+
+        public bool ProcessTask(DTO blob)
         {
             switch (blob.cmdType)
             {
@@ -41,7 +67,7 @@ namespace ProcessCreationService_project
                         //hello from puppetmaster, puppetmaster url should be sent on the sender field.
 
                         PuppetMaster = (IPuppet)Activator.GetObject(typeof(IPuppet), blob.Sender);
-                        Console.WriteLine(PuppetMaster.pingRequest());
+                        Console.WriteLine(PuppetMaster.PingRequest());
 
                         LoggingLevel = blob.Tuple[DTO.LOGGINGLEVEL];
                         Semantics = blob.Tuple[DTO.SEMANTICS];
@@ -79,7 +105,7 @@ namespace ProcessCreationService_project
                         replicas.TryGetValue("operator_id", out mylist);
                         foreach (var replica in mylist)
                         {
-                            Console.WriteLine(replica.pingRequest());
+                            Console.WriteLine(replica.PingRequest());
                         }
                         return true;
                     }

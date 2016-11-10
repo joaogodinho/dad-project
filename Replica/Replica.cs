@@ -52,7 +52,7 @@ namespace Replica_project
             Console.WriteLine("Replica @ " + request.Receiver + " has received the request and said : " + requestResult);
         }
 
-        public string pingRequest()
+        public string PingRequest()
         {
             return "hey, you reached " + this.MyId + " on uri " + this.MyUri.ToString();
         }

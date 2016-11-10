@@ -88,6 +88,10 @@
       <Project>{67936986-b186-446a-ab64-c4301812a055}</Project>
       <Name>CommonCode</Name>
     </ProjectReference>
+    <ProjectReference Include="..\ProcessCreationService\ProcessCreationService.csproj">
+      <Project>{7CEEC244-2AC0-464C-BBAA-C6D41CD00B7A}</Project>
+      <Name>ProcessCreationService</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

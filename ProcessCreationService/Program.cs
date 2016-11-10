@@ -14,15 +14,13 @@ namespace ProcessCreationService_project
     {
         private static ProcessCreationService ThisProcess;
 
-        private const string NAME = "PCS";
-
         static void Main(string[] args)
         {
-            Console.Title = NAME;
+            Console.Title = ProcessCreationService.NAME.ToUpper();
 
             ThisProcess = new ProcessCreationService();
-            ChannelServices.RegisterChannel(new TcpChannel(10001), false);
-            RemotingServices.Marshal(ThisProcess, NAME, typeof(IProcessCreationService));
+            ChannelServices.RegisterChannel(new TcpChannel(ProcessCreationService.PORT), false);
+            RemotingServices.Marshal(ThisProcess, ProcessCreationService.NAME, typeof(IProcessCreationService));
 
             Console.WriteLine("PCS has been started, waiting for instructions from the puppetmaster");
             Console.WriteLine("Press enter to exit");
