@@ -12,10 +12,7 @@ namespace CommonCode.Interfaces
     {
         //type and return of Tasks to be used in process request and response should be refined.
 
-        Task<bool> processRequest(DTO blob);
-
-        Task<bool> processResponse(DTO blob);
-        
+        bool processRequest(DTO blob);
 
     }
 }
