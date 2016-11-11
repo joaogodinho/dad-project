@@ -13,5 +13,12 @@ namespace CommonCode.Interfaces
         void Config(string loglevel, string semantics);
         void AddOperator(Operator op);
         bool ProcessTask(DTO blob);
+
+        void Start(string opid);
+        void Interval(string opid, int time);
+        void Status();
+        void Crash(Tuple<string, int> id);
+        void Freeze(Tuple<string, int> id);
+        void Unfreeze(Tuple<string, int> id);
     }
 }

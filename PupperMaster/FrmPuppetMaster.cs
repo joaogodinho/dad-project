@@ -115,6 +115,7 @@ namespace DADStorm.PuppetMaster
         private void btnRunScript_Click(object sender, EventArgs e)
         {
             disableAll();
+            // TODO Run the script, it should be async!
             enableAll();
         }
     }

@@ -114,5 +114,35 @@ namespace ProcessCreationService_project
             }
             
         }
+
+        public void Start(string opid)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Interval(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Status()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Crash(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Freeze(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Unfreeze(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
