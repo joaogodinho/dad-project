@@ -94,22 +94,22 @@ namespace DADStorm.PuppetMaster
 
         internal void ParseAndAddOperator(string s)
         {
-            Operator op = new Operator();
             string[] values = s.Split(' ');
 
-            op.Id = values[(int)EConfig.ID];
+            string opID = values[(int)EConfig.ID];
 
             Debug.Assert(values[(int)EConfig.INPUT_KEYWORD].ToLower() == "input_ops");
-            op.Input = values[(int)EConfig.INPUT_VALUE];
+            string input = values[(int)EConfig.INPUT_VALUE];
 
             Debug.Assert(values[(int)EConfig.REP_KEYWORD].ToLower() == "rep_fact");
-            // TODO Use replicas variable for final submission
             int replicas = int.Parse(values[(int)EConfig.REP_VALUE]);
 
             Debug.Assert(values[(int)EConfig.ROUTE_KEYWORD].ToLower() == "routing");
             // TODO Change to deal with other routing methods
-            op.Routing = new Tuple<string, string>("primary", "");
+            Tuple<string, string> routing = new Tuple<string, string>("primary", "");
 
+            // Create the operator's list here, since we can now know how many there will be
+            List<Operator> opList = new List<Operator>();
             Debug.Assert(values[(int)EConfig.ADDR_KEYWORD].ToLower() == "address");
             List<Uri> uris = new List<Uri>();
             for (int i = 0; i < replicas; i++)
@@ -119,10 +119,15 @@ namespace DADStorm.PuppetMaster
                 uris.Add(uri);
                 // Seems like a good time to try and connect to the PCS that should be on this IP
                 AddAndTestPCS(ProcessCreationService.BuildURI(uri.Host));
+                // Add this operator to the list
+                opList.Add(new Operator(
+                    new Tuple<string, int>(opID, i),
+                    ProcessCreationService.BuildURI(uri.Host),
+                    input,
+                    uri.Port,
+                    routing
+                ));
             }
-            // TODO Change to deal with multiple replicas. There should be a list of operators, in case of multiple replicas, but f'it for now
-            op.Port = uris[0].Port;
-            op.PCS = ProcessCreationService.BuildURI(uris[0].Host);
 
             int op_keyword = (int)EConfig.ADDR_START + replicas;
             Debug.Assert(values[op_keyword].ToLower() == "operator_spec");
@@ -151,15 +156,17 @@ namespace DADStorm.PuppetMaster
                 default:
                     throw new Exception("Unknown Operation.");
             }
-            op.Spec = operation;
 
-            // TODO Change to create list with all replicas
-            List<Operator> opList = new List<Operator>();
-            opList.Add(op);
-            DOperators.Add(op.Id, opList);
+            // Set the operation for the operator
+            foreach (Operator op in opList)
+            {
+                op.Spec = operation;
+            }
+
+            DOperators.Add(opID, opList);
 
             List<Operator> receivingOperators = null;
-            DOperators.TryGetValue(op.Input, out receivingOperators);
+            DOperators.TryGetValue(input, out receivingOperators);
             // So it doesn't blow up if the operators are declared in a wrong order
             if (receivingOperators!= null)
             {
@@ -204,6 +211,7 @@ namespace DADStorm.PuppetMaster
                 default:
                     throw new Exception("Unknown command.");
             }
+            command.Execute(DOperators);
         }
 
         public void SendMsg(string message)

@@ -9,7 +9,7 @@ namespace CommonCode.Models
     [Serializable]
     public abstract class Command
     {
-        public abstract void Execute();
+        public abstract void Execute(Dictionary<string, List<Operator>> doperators);
     }
 
     public abstract class CommandID : Command
@@ -28,7 +28,7 @@ namespace CommonCode.Models
         {
         }
 
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }
@@ -44,7 +44,7 @@ namespace CommonCode.Models
             RepID = repid;
         }
 
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }
@@ -53,7 +53,7 @@ namespace CommonCode.Models
     [Serializable]
     public class CommandStatus: Command
     {
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }
@@ -69,7 +69,7 @@ namespace CommonCode.Models
             Interval = interval;
         }
 
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }
@@ -85,7 +85,7 @@ namespace CommonCode.Models
             RepID = repid;
         }
 
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }
@@ -101,7 +101,7 @@ namespace CommonCode.Models
             Time = time;
         }
 
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }
@@ -117,7 +117,7 @@ namespace CommonCode.Models
             RepID = repid;
         }
 
-        public override void Execute()
+        public override void Execute(Dictionary<string, List<Operator>> doperators)
         {
             throw new NotImplementedException();
         }

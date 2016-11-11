@@ -11,13 +11,22 @@ namespace CommonCode.Models
     [Serializable]
     public class Operator
     {
-        public string Id { get; set; }
+        public Tuple<string, int> Id { get; set; }
         public string PCS { get; set; }
         public string Input { get; set; }
         public List<Uri> DownIps = new List<Uri>();
         public int Port { get; set; }
         public Tuple<string, string> Routing { get; set; }
         public OperatorSpec Spec { get; set; }
+
+        public Operator(Tuple<string, int> id, string pcs, string input, int port, Tuple<string, string> routing)
+        {
+            Id = id;
+            PCS = pcs;
+            Input = input;
+            Port = port;
+            Routing = routing;
+        }
     }
 
     [Serializable]
