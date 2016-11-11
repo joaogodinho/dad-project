@@ -46,7 +46,6 @@
     <Compile Include="Interfaces\IPuppet.cs" />
     <Compile Include="Interfaces\IRemoteObject.cs" />
     <Compile Include="Interfaces\IReplica.cs" />
-    <Compile Include="Models\Command.cs" />
     <Compile Include="Models\Operator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -14,5 +14,12 @@ namespace CommonCode.Interfaces
         void AddOperator(Operator op);
         bool ProcessTask(DTO blob);
         Operator getOperator(Tuple<string, int> op_rep);
+
+        void Start(string opid);
+        void Interval(string opid, int time);
+        void Status();
+        void Crash(Tuple<string, int> id);
+        void Freeze(Tuple<string, int> id);
+        void Unfreeze(Tuple<string, int> id);
     }
 }

@@ -11,7 +11,7 @@ using ProcessCreationService_project;
 
 namespace DADStorm.PuppetMaster
 {
-    class PuppetMaster : MarshalByRefObject, IPuppet
+    public class PuppetMaster : MarshalByRefObject, IPuppet
     {
         private static frmPuppetMaster MyForm;
 
@@ -22,9 +22,9 @@ namespace DADStorm.PuppetMaster
         public string Semantics { get; set; }
 
         // <URL, PCS>
-        private Dictionary<string, IProcessCreationService> DPCS = new Dictionary<string, IProcessCreationService>();
+        public Dictionary<string, IProcessCreationService> DPCS = new Dictionary<string, IProcessCreationService>();
         // <OP_ID, Operator[]>
-        private Dictionary<string, List<Operator>> DOperators = new Dictionary<string, List<Operator>>();
+        public Dictionary<string, List<Operator>> DOperators = new Dictionary<string, List<Operator>>();
 
         public PuppetMaster(frmPuppetMaster myform)
         {
@@ -183,12 +183,19 @@ namespace DADStorm.PuppetMaster
 
         public void ParseCommand(string sCommand)
         {
+            IProcessCreationService pcs;
             string[] values = sCommand.Split(' ');
             Command command;
             switch (values[0].ToLower())
             {
                 case "start":
                     command = new CommandStart(values[1]);
+                    List<Operator> operators = DOperators[values[1]];
+                    foreach (Operator op in operators)
+                    {
+                        // Get the PCS reference
+                        pcs = DPCS[op.PCS];
+                    }
                     break;
                 case "interval":
                     command = new CommandInterval(values[1], int.Parse(values[2]));
@@ -211,7 +218,7 @@ namespace DADStorm.PuppetMaster
                 default:
                     throw new Exception("Unknown command.");
             }
-            command.Execute(DOperators);
+            command.Execute(this);
         }
 
         public void SendMsg(string message)

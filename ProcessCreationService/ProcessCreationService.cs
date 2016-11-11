@@ -128,7 +128,6 @@ namespace ProcessCreationService_project
             }
             
         }
-
         public Operator getOperator(Tuple<string, int> op_rep)
         {
             List<Operator> ops = operators[op_rep.Item1];
@@ -138,6 +137,42 @@ namespace ProcessCreationService_project
                     return o;
             }
             return null;
+
+        }
+
+        public void Start(string opid)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Interval(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Status()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Crash(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Freeze(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Unfreeze(Tuple<string, int> id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Interval(string opid, int time)
+        {
+            throw new NotImplementedException();
         }
     }
 }
