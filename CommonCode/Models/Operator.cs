@@ -34,17 +34,19 @@ namespace CommonCode.Models
     [Serializable]
     public abstract class OperatorSpec
     {
-        public abstract string[] processTuple(string[] tuple);
+        public abstract List<List<string>> processTuple(List<string> tuple);
     }
     
     [Serializable]
     public class OperatorCount : OperatorSpec
     {
         public int CurrentCount = 0;
-        public override string[] processTuple(string[] tuple)
+        public override List<List<string>> processTuple(List<string> tuple)
         {
+            List<List<string>> tuples = new List<List<string>>();
             int count = Interlocked.Increment(ref CurrentCount);
-            return new string[] { count.ToString() };
+            Console.WriteLine(count);
+            return tuples;
         }
     }
 
@@ -57,15 +59,17 @@ namespace CommonCode.Models
 
         public OperatorUniq(int fieldNumb)
         {
-            FieldNumber = fieldNumb;
+            FieldNumber = fieldNumb-1;
             Hits = new List<string>();
         }
-        public override string[] processTuple(string[] tuple)
+        public override List<List<string>> processTuple(List<string> tuple)
         {
+            List<List<string>> tuples = new List<List<string>>();
             if (Hits.Contains(tuple[FieldNumber]))
-                return null;
+                return tuples;
             else Hits.Add(tuple[FieldNumber]);
-            return tuple;
+            tuples.Add(tuple);
+            return tuples;
 
         }
     }
@@ -73,9 +77,11 @@ namespace CommonCode.Models
     [Serializable]
     public class OperatorDup : OperatorSpec
     {
-        public override string[] processTuple(string[] tuple)
+        public override List<List<string>> processTuple(List<string> tuple)
         {
-            return tuple;
+            List<List<string>> tuples = new List<List<string>>();
+            tuples.Add(tuple);
+            return tuples;
         }
     }
 
@@ -88,16 +94,19 @@ namespace CommonCode.Models
         public string Value { get; set; }
         public OperatorFilter(int field, string condition, string value)
         {
-            Field = field;
+            Field = field-1;
             Condition = condition;
             Value = value;
         }
-        public override string[] processTuple(string[] tuple)
+        public override List<List<string>> processTuple(List<string> tuple)
         {
-            return IsFilterAMatch(tuple, Field, Condition, Value) ? tuple : null;
+            List<List<string>> tuples = new List<List<string>>();
+            if (IsFilterAMatch(tuple, Field, Condition, Value))
+                tuples.Add(tuple);
+            return tuples;
         }
 
-        private bool IsFilterAMatch(string[] tuple, int field, string condition, string compareTo)
+        private bool IsFilterAMatch(List<string> tuple, int field, string condition, string compareTo)
         {
             switch (condition)
             {
@@ -124,14 +133,26 @@ namespace CommonCode.Models
             Method = method;
         }
 
-        public override string[] processTuple(string[] tuple)
+        public override List<List<string>> processTuple(List<string> tuple)
         {
-            var DLL = Assembly.LoadFile(Dll);
-            var type = Type.GetType(ClassName);
-            var c = Activator.CreateInstance(Type.GetType(ClassName));
-            var method = type.GetMethod(Method);
-            var result = method.Invoke(c, new object[] { @"Hello" });
-            return result as string[];
+            List<string> prettyTuple = new List<string>();
+            foreach(string s in tuple)
+            {
+                prettyTuple.Add(s);
+            }
+            var DLL = Assembly.LoadFile(AppDomain.CurrentDomain.BaseDirectory + Dll);
+            Type target = null;
+            foreach (Type lel in DLL.GetTypes())
+            {
+                if (lel.Name.Contains(ClassName)) { 
+                    target = lel;break;
+                }
+            }
+            var c = Activator.CreateInstance(target);
+            var method = target.GetMethod(Method);
+
+            var result = method.Invoke(c, new object[] { prettyTuple });
+            return (List<List<string>>) result;
         }
     }
 }

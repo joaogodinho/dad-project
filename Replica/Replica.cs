@@ -7,6 +7,9 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Text;
+using System.Collections.Generic;
 
 namespace Replica_project
 {
@@ -20,7 +23,7 @@ namespace Replica_project
         }
 
         private string LogLevel { get; set; }
-        private EStatus CurrStatus { get; set; } = EStatus.STOPPED;
+        private EStatus CurrStatus { get; set; } = EStatus.RUNNING;
         private int IInterval { get; set; } = 0;
         // private ConcurrentQueue<string[]> InBuffer { get; set; } = new ConcurrentQueue<string[]>();
         private ConcurrentQueue<string[]> OutBuffer { get; set; } = new ConcurrentQueue<string[]>();
@@ -29,7 +32,7 @@ namespace Replica_project
         public string MyId { get; set; }
         public Uri MyUri { get; set; }
         public string CurrentSemantic { get; set; }
-        public Operator MyOperator { get; set; }
+        public static Operator MyOperator { get; set; }
         // This should just be a tuple? One for input, another for output and make a thread just to push the tuples out
         public ConcurrentQueue<DTO> InBuffer { get; set; }
         public IProcessCreationService PCS { get; set; }
@@ -44,28 +47,32 @@ namespace Replica_project
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
             MyOperator = PCS.getOperator(OPAndRep);
             LogLevel = loglevel;
-            // TODO Spawn threads for ProcessTuples and SendTuples
+            Task.Run(() =>
+            {
+                if (MyOperator.Input.StartsWith("OP"))
+                    ProcessTuples();
+                else ReadFile();
+            });
         }
 
         // The loop that processes tuples from the input and puts them in the output
         // This should probably be its own thread, in order to handle the freeze/crash/unfreeze remote invocations
         private void ProcessTuples()
         {
-            OperatorSpec opspec = MyOperator.Spec;
-            // Is this thread safe?
-            if (CurrStatus == EStatus.RUNNING)
-            {
-                // While input queue is empty, block
-                    // Take the item and process it
-                    string[] result = opspec.processTuple(new string[0]);
-                    // Put it in the output queue
-                    OutBuffer.Enqueue(result);
+            while (true) { 
+                // Is this thread safe?
+                if (CurrStatus == EStatus.RUNNING )
+                {
+                    DTO tuple = null;
+                    if (InBuffer.TryDequeue(out tuple))
+                        mainProcessingCycle(tuple);
 
-                    // Spare a stack frame, dunno if compiler optimizes the sleep(0)
                     if (IInterval != 0)
                     {
                         Thread.Sleep(IInterval);
                     }
+                }
+                else Monitor.Wait(MyOperator);
             }
         }
 
@@ -84,13 +91,14 @@ namespace Replica_project
         public bool processRequest(DTO blob)
         {
             Console.WriteLine("Received a tuple from " + blob.Sender);
-            ThreadPool.QueueUserWorkItem(mainProcessingCycle, blob);
+            InBuffer.Enqueue(blob);
             return true;
         }
 
         // TODO Make all of this async?
         public void ReadFile()
         {
+
             Stream stream = null;
             if ((stream = File.Open(AppDomain.CurrentDomain.BaseDirectory + MyOperator.Input, FileMode.Open)) != null)
             {
@@ -99,9 +107,9 @@ namespace Replica_project
                     string test = (new StreamReader(stream)).ReadToEnd();
                     foreach (string s in test.Split('\n'))
                     {
-                        if (!s.StartsWith("%"))
+                        if (!s.StartsWith("%") && !string.IsNullOrEmpty(s))
                         {
-                            string[] tuple = s.Split(',').Select(p => p.Trim()).ToArray<string>();
+                            List<string> tuple = s.Split(',').Select(p => p.Trim()).ToList<string>();
                             
                             DTO dto = new DTO();
                             dto.Sender = MyUri.ToString();
@@ -115,34 +123,41 @@ namespace Replica_project
                             {
                                 dto.Receiver = null;
                             }
-                            mainProcessingCycle(dto);
+                            if (CurrStatus != EStatus.RUNNING)
+                                Monitor.Wait(MyOperator);
+                            else mainProcessingCycle(dto);
                         }
                     }
                 }
             }
+            
         }
         
         private void mainProcessingCycle(object blob)
         {
             DTO dto = (DTO)blob;
             Console.WriteLine("Now processing tuple from " + dto.Sender + " tuple is : " + dto.Tuple.ToString());
-            string[] result = MyOperator.Spec.processTuple(dto.Tuple);
-            Console.WriteLine("Finished processing tuple from " + dto.Sender + " result was : " + result.ToString());
-            //routing is primary for now
-            if (dto.Receiver != null)
-            {
-                DTO request = new DTO()
+            List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
+            if (result.Count == 0) return;
+            else
+                foreach (List<string> tuple in result)
                 {
-                    Sender = dto.Sender,
-                    Tuple = result,
-                    Receiver = dto.Receiver
-                };
-                IReplica replica = (IReplica)Activator.GetObject(typeof(IReplica), dto.Receiver);
-                Console.WriteLine("Now Sending the request Downstream to Replica @ " + request.Receiver);
-                var requestResult = replica.processRequest(request);
-                Console.WriteLine("Replica @ " + request.Receiver + " has received the request and said : " + requestResult);
-            }
-
+                    Console.WriteLine("Finished processing tuple from " + dto.Sender + " result was : " + result.ToString());
+                    //routing is primary for now
+                    if (MyOperator.DownIps.Count > 0)
+                    {
+                        DTO request = new DTO()
+                        {
+                            Sender = dto.Sender,
+                            Tuple = tuple,
+                            Receiver = MyOperator.DownIps[0].ToString()
+                        };
+                        IReplica replica = (IReplica)Activator.GetObject(typeof(IReplica), dto.Receiver);
+                        Console.WriteLine("Now Sending the request Downstream to Replica @ " + request.Receiver);
+                        var requestResult = replica.processRequest(request);
+                        Console.WriteLine("Replica @ " + request.Receiver + " has received the request and said : " + requestResult);
+                    }
+                }
         }
 
         public string PingRequest()
@@ -153,6 +168,7 @@ namespace Replica_project
         public void Start()
         {
             CurrStatus = EStatus.RUNNING;
+            Task.Run(() => Monitor.Pulse(MyOperator));
         }
 
         public void Interval(int time)
@@ -160,11 +176,11 @@ namespace Replica_project
             Debug.Assert(time >= 0);
             IInterval = time;
         }
+        
 
         public void Crash()
         {
-            // TODO Stop this replica
-            throw new NotImplementedException();
+            Task.Run(() => Process.GetCurrentProcess().Kill());
         }
 
         public void Freeze()
@@ -175,6 +191,7 @@ namespace Replica_project
         public void Unfreeze()
         {
             CurrStatus = EStatus.RUNNING;
+            Task.Run(() => Monitor.Pulse(MyOperator));
         }
 
         public string Status()

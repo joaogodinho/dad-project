@@ -12,11 +12,11 @@ namespace CommonCode.Comms
         //add fields as desired,
         
 
-        public DTO(CommandType cmd, string sender, string receiver, string[] tuple)
+        public DTO(CommandType cmd, string sender, string receiver, List<string> tuple)
         {
             Sender = sender;
             Receiver = receiver;
-            Tuple = tuple;
+            Tuple = new List<string>();
             cmdType = cmd;
         }
 
@@ -33,7 +33,7 @@ namespace CommonCode.Comms
         public string Receiver { get; set; }
 
         //values to be used by the Operator in the receiving replica
-        public string[] Tuple { get; set; }
+        public List<string> Tuple { get; set; }
 
         public CommandType cmdType { get; set; }
 

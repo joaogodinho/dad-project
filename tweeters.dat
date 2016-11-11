@@ -1,5 +1,5 @@
 %% This file contains the URLs sent by tweeters. 
-%% The format of each line is: id, tweeter id, url
+%% The format of each line is:
 1, user3, "www.tecnico.ulisboa.pt"
 2, user7, "www.google.com"
 3, user8, "www.facebook.com"

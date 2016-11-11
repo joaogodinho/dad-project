@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonCode", "CommonCode\Co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PuppetMaster", "PupperMaster\PuppetMaster.csproj", "{8502E558-578F-4A1D-B76A-9D1C936F811F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mylib", "mylib\mylib.csproj", "{324DE61F-C939-495C-93BB-51D81A602C59}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{8502E558-578F-4A1D-B76A-9D1C936F811F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8502E558-578F-4A1D-B76A-9D1C936F811F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8502E558-578F-4A1D-B76A-9D1C936F811F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{324DE61F-C939-495C-93BB-51D81A602C59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{324DE61F-C939-495C-93BB-51D81A602C59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{324DE61F-C939-495C-93BB-51D81A602C59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{324DE61F-C939-495C-93BB-51D81A602C59}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
