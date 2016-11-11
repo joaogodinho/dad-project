@@ -118,9 +118,8 @@ namespace DADStorm.PuppetMaster
         private void btnRunScript_Click(object sender, EventArgs e)
         {
             disableAll();
-            // TODO Spawn thread to execute the script, so it doesn't block UI
             IReplica replica = (IReplica) Activator.GetObject(typeof(IReplica), @"tcp://localhost:11000/op");
-            replica.ReadFile();
+            replica.Start();
             enableAll();
         }
     }

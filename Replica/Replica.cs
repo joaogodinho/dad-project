@@ -23,7 +23,7 @@ namespace Replica_project
         }
 
         private string LogLevel { get; set; }
-        private EStatus CurrStatus { get; set; } = EStatus.RUNNING;
+        private EStatus CurrStatus { get; set; } = EStatus.STOPPED;
         private int IInterval { get; set; } = 0;
         // private ConcurrentQueue<string[]> InBuffer { get; set; } = new ConcurrentQueue<string[]>();
         private ConcurrentQueue<string[]> OutBuffer { get; set; } = new ConcurrentQueue<string[]>();
@@ -59,10 +59,12 @@ namespace Replica_project
         // This should probably be its own thread, in order to handle the freeze/crash/unfreeze remote invocations
         private void ProcessTuples()
         {
-            while (true) { 
-                // Is this thread safe?
-                if (CurrStatus == EStatus.RUNNING )
+            while (true) {
+                lock (MyOperator)
                 {
+                    while (CurrStatus != EStatus.RUNNING)
+                        Monitor.Wait(MyOperator);
+                }
                     DTO tuple = null;
                     if (InBuffer.TryDequeue(out tuple))
                         mainProcessingCycle(tuple);
@@ -72,8 +74,6 @@ namespace Replica_project
                         Thread.Sleep(IInterval);
                     }
                 }
-                else Monitor.Wait(MyOperator);
-            }
         }
 
         // The loop that send the tuples to the downstream operators
@@ -123,9 +123,12 @@ namespace Replica_project
                             {
                                 dto.Receiver = null;
                             }
-                            if (CurrStatus != EStatus.RUNNING)
-                                Monitor.Wait(MyOperator);
-                            else mainProcessingCycle(dto);
+                            lock (MyOperator) { 
+                                while (CurrStatus != EStatus.RUNNING)
+                                    Monitor.Wait(MyOperator);
+                            }
+                            mainProcessingCycle(dto);
+
                         }
                     }
                 }
@@ -168,7 +171,10 @@ namespace Replica_project
         public void Start()
         {
             CurrStatus = EStatus.RUNNING;
-            Task.Run(() => Monitor.Pulse(MyOperator));
+            lock (MyOperator)
+            {
+                Monitor.Pulse(MyOperator);
+            }
         }
 
         public void Interval(int time)
@@ -191,7 +197,10 @@ namespace Replica_project
         public void Unfreeze()
         {
             CurrStatus = EStatus.RUNNING;
-            Task.Run(() => Monitor.Pulse(MyOperator));
+            lock (MyOperator)
+            {
+                Monitor.Pulse(MyOperator);
+            }
         }
 
         public string Status()
