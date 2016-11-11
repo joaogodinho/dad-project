@@ -17,7 +17,7 @@ namespace ProcessCreationService_project
         static void Main(string[] args)
         {
             Console.Title = ProcessCreationService.NAME.ToUpper();
-
+            Console.SetWindowSize(70, 15);
             ThisProcess = new ProcessCreationService();
             ChannelServices.RegisterChannel(new TcpChannel(ProcessCreationService.PORT), false);
             RemotingServices.Marshal(ThisProcess, ProcessCreationService.NAME, typeof(IProcessCreationService));

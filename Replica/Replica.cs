@@ -5,6 +5,8 @@ using System.Threading;
 using CommonCode.Interfaces;
 using CommonCode.Comms;
 using CommonCode.Models;
+using System.Collections.Concurrent;
+using System.IO;
 
 namespace Replica_project
 {
@@ -16,12 +18,18 @@ namespace Replica_project
         public Uri MyUri { get; set; }
         public string CurrentSemantic { get; set; }
         public Operator MyOperator { get; set; }
+        public ConcurrentQueue<DTO> InBuffer { get; set; }
+        public IProcessCreationService PCS { get; set; }
+        public Tuple<string,int> OPAndRep { get; set; }
 
-
-        public Replica(string id, string myurl)
+        public Replica(string id, string myurl, Tuple<string,int> op_rep)
         {
             MyId = id;
             MyUri = new Uri(myurl);
+            InBuffer = new ConcurrentQueue<DTO>();
+            OPAndRep = op_rep;
+            PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
+            MyOperator = PCS.getOperator(OPAndRep);
         }
 
         public bool processRequest(DTO blob)
@@ -31,6 +39,29 @@ namespace Replica_project
             return true;
         }
 
+        public void ReadFile()
+        {
+            Stream stream = null;
+            if ((stream = File.Open(AppDomain.CurrentDomain.BaseDirectory + MyOperator.Input,FileMode.Open)) != null)
+            {
+                using (stream)
+                {
+                    string test = (new StreamReader(stream)).ReadToEnd();
+                    foreach (string s in test.Split('\n'))
+                    {
+                        string[] tuple = s.Split(' ');
+                        DTO dto = new DTO()
+                        {
+                            Sender = MyUri.ToString(),
+                            Tuple = tuple,
+                            Receiver = MyOperator.DownIps[0].ToString()
+                        };
+                        mainProcessingCycle(dto);
+                    }
+                }
+            }
+        }
+        
         private void mainProcessingCycle(object blob)
         {
             DTO dto = (DTO)blob;

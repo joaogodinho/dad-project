@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommonCode.Interfaces;
+using System;
 using System.IO;
 using System.Windows.Forms;
 
@@ -115,6 +116,8 @@ namespace DADStorm.PuppetMaster
         private void btnRunScript_Click(object sender, EventArgs e)
         {
             disableAll();
+            IReplica replica = (IReplica) Activator.GetObject(typeof(IReplica), @"tcp://localhost:11000/op");
+            replica.ReadFile();
             enableAll();
         }
     }

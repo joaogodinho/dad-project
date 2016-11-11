@@ -20,7 +20,10 @@ namespace ProcessCreationService_project
         private Uri MyUri { get; set; }
         private string MyName { get; set; }
         private IPuppet PuppetMaster { get; set; }
+
         private Dictionary<string, List<IReplica>> replicas;
+
+        private Dictionary<string, List<Operator>> operators;
         private string LoggingLevel { get; set; }
         private string Semantics { get; set; }
 
@@ -36,6 +39,7 @@ namespace ProcessCreationService_project
         public ProcessCreationService()
         {
             replicas = new Dictionary<string, List<IReplica>>();
+            operators = new Dictionary<string, List<Operator>>();
         }
 
         public string PingRequest()
@@ -54,6 +58,16 @@ namespace ProcessCreationService_project
         public void AddOperator(Operator op)
         {
             Console.WriteLine("Adding new operator with ID: " + op.Id);
+            List<Operator> tempOperators = null;
+            operators.TryGetValue(op.Id.Item1,out tempOperators);
+            if (tempOperators == null)
+            {
+                tempOperators = new List<Operator>();
+                operators.Add(op.Id.Item1, tempOperators); 
+            }
+            tempOperators.Add(op);
+            Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Replica.exe",op.Id.Item1 + " " + op.Id.Item2 + " " + op.Port + " " + op.PCS );
+
         }
 
         public bool ProcessTask(DTO blob)
@@ -113,6 +127,17 @@ namespace ProcessCreationService_project
                 default: return false;//do nothing
             }
             
+        }
+
+        public Operator getOperator(Tuple<string, int> op_rep)
+        {
+            List<Operator> ops = operators[op_rep.Item1];
+            foreach (var o in ops)
+            {
+                if (o.Id.Item1 == op_rep.Item1 && o.Id.Item2 == op_rep.Item2)
+                    return o;
+            }
+            return null;
         }
     }
 }

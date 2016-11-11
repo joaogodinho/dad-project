@@ -14,5 +14,6 @@ namespace CommonCode.Interfaces
 
         bool processRequest(DTO blob);
 
+        void ReadFile();
     }
 }

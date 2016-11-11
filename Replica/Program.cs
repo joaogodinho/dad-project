@@ -14,10 +14,17 @@ namespace Replica_project
     {
         private const string NAME = "op";
 
+        private const int REPLICA_OP_ID = 0;
+        private const int REPLICA_REP_ID = 1;
+        private const int REPLICA_PORT = 2;
+        private const int REPLICA_URI = 3;
+
         static void Main(string[] args)
         {
-            Replica ThisReplica = new Replica(args[1],"url");
-            ChannelServices.RegisterChannel(new TcpChannel(int.Parse(args[1])), false);
+            Console.Title = args[REPLICA_OP_ID] + args[REPLICA_REP_ID];
+            Console.SetWindowSize(70, 15);
+            ChannelServices.RegisterChannel(new TcpChannel(int.Parse(args[REPLICA_PORT])), false);
+            Replica ThisReplica = new Replica(args[REPLICA_OP_ID],args[REPLICA_URI], new Tuple<string,int>(args[REPLICA_OP_ID],int.Parse(args[REPLICA_REP_ID])));
             RemotingServices.Marshal(ThisReplica,"op", typeof(IReplica));
             Console.WriteLine("Replica has been started, waiting commands and inputs");
             Console.WriteLine("Press enter to exit");
