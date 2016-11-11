@@ -8,6 +8,7 @@ using System.Runtime.Remoting.Channels.Tcp;
 using CommonCode.Models;
 using System.Collections.Generic;
 using ProcessCreationService_project;
+using System.Linq;
 
 namespace DADStorm.PuppetMaster
 {
@@ -71,7 +72,7 @@ namespace DADStorm.PuppetMaster
             {
                 foreach (Operator operatorRep in node.Value)
                 {
-                    WriteMessage("Sending opeartor " + operatorRep.Id + " to " + operatorRep.PCS + "...");
+                    WriteMessage("Sending operator " + operatorRep.Id + " to " + operatorRep.PCS + "...");
                     // If this should ever be null, someone screwed up, not me....
                     IProcessCreationService pcs = DPCS[operatorRep.PCS];
                     pcs.AddOperator(operatorRep);
@@ -94,7 +95,8 @@ namespace DADStorm.PuppetMaster
 
         internal void ParseAndAddOperator(string s)
         {
-            string[] values = s.Split(' ');
+            // Trim just in case the file comes from a windows(\r\n), he says while programming this lovely language in visual studio, lul.
+            string[] values = s.Split(' ').Select(p => p.Trim()).ToArray<string>();
 
             string opID = values[(int)EConfig.ID];
 
@@ -167,7 +169,7 @@ namespace DADStorm.PuppetMaster
 
             List<Operator> receivingOperators = null;
             DOperators.TryGetValue(input, out receivingOperators);
-            // So it doesn't blow up if the operators are declared in a wrong order
+            // So it doesn't blow up if the operators are declared in a wrong order, and for the first OP
             if (receivingOperators!= null)
             {
                 foreach (var item in receivingOperators)

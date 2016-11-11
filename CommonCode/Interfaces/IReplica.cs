@@ -13,7 +13,13 @@ namespace CommonCode.Interfaces
         //type and return of Tasks to be used in process request and response should be refined.
 
         bool processRequest(DTO blob);
-
         void ReadFile();
+
+        void Start();
+        string Status();
+        void Interval(int time);
+        void Crash();
+        void Freeze();
+        void Unfreeze();
     }
 }

@@ -21,9 +21,10 @@ namespace ProcessCreationService_project
         private string MyName { get; set; }
         private IPuppet PuppetMaster { get; set; }
 
-        private Dictionary<string, List<IReplica>> replicas;
-
-        private Dictionary<string, List<Operator>> operators;
+        // TODO This should be inside Operators
+        private Dictionary<string, List<IReplica>> Replicas;
+        private Dictionary<string, List<Operator>> Operators;
+        // TODO Need to pass this down to the Replicas
         private string LoggingLevel { get; set; }
         private string Semantics { get; set; }
 
@@ -38,8 +39,8 @@ namespace ProcessCreationService_project
 
         public ProcessCreationService()
         {
-            replicas = new Dictionary<string, List<IReplica>>();
-            operators = new Dictionary<string, List<Operator>>();
+            Replicas = new Dictionary<string, List<IReplica>>();
+            Operators = new Dictionary<string, List<Operator>>();
         }
 
         public string PingRequest()
@@ -59,14 +60,14 @@ namespace ProcessCreationService_project
         {
             Console.WriteLine("Adding new operator with ID: " + op.Id);
             List<Operator> tempOperators = null;
-            operators.TryGetValue(op.Id.Item1,out tempOperators);
+            Operators.TryGetValue(op.Id.Item1,out tempOperators);
             if (tempOperators == null)
             {
                 tempOperators = new List<Operator>();
-                operators.Add(op.Id.Item1, tempOperators); 
+                Operators.Add(op.Id.Item1, tempOperators); 
             }
             tempOperators.Add(op);
-            Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Replica.exe",op.Id.Item1 + " " + op.Id.Item2 + " " + op.Port + " " + op.PCS );
+            Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Replica.exe", op.Id.Item1 + " " + op.Id.Item2 + " " + op.Port + " " + op.PCS + " " + LoggingLevel);
 
         }
 
@@ -103,20 +104,20 @@ namespace ProcessCreationService_project
                         List<IReplica> mylist = null;
 
                         //one OPERATOR_ID points to multiple replicas!
-                        replicas.TryGetValue("operator_id", out mylist);
+                        Replicas.TryGetValue("operator_id", out mylist);
                         if(mylist == null)
                         {
                             mylist = new List<IReplica>();
                         }
                         mylist.Add((IReplica) Activator.GetObject(typeof(IReplica), "replica_uri"));
-                        replicas.Add("operator_id", mylist);
+                        Replicas.Add("operator_id", mylist);
 
                         return true;
                     }
                 case CommandType.STARTOPERATOR:
                     {
                         List<IReplica> mylist = null;
-                        replicas.TryGetValue("operator_id", out mylist);
+                        Replicas.TryGetValue("operator_id", out mylist);
                         foreach (var replica in mylist)
                         {
                             Console.WriteLine(replica.PingRequest());
@@ -130,7 +131,7 @@ namespace ProcessCreationService_project
         }
         public Operator getOperator(Tuple<string, int> op_rep)
         {
-            List<Operator> ops = operators[op_rep.Item1];
+            List<Operator> ops = Operators[op_rep.Item1];
             foreach (var o in ops)
             {
                 if (o.Id.Item1 == op_rep.Item1 && o.Id.Item2 == op_rep.Item2)
@@ -140,39 +141,61 @@ namespace ProcessCreationService_project
 
         }
 
-        public void Start(string opid)
+        private delegate void RemoteFuncCall(IReplica rep);
+        // Maybe this is what they mean when they say the commands should be async,
+        // the calls to the replicas should prob be async
+        // TODO implement the call as a new thread
+        private void CallOnRep(Tuple<string, int> id, RemoteFuncCall func)
         {
-            throw new NotImplementedException();
+            if (id.Item1 == "ALL")
+            {
+                Operators.Values.ToList().ForEach(x => x.ForEach(y => func(y.Replica)));
+            }
+            else
+            {
+                List<Operator> operators = Operators[id.Item1];
+                foreach (Operator op in operators)
+                {
+                    if (id.Item2 != -1 && op.Id.Item2 == id.Item2)
+                    {
+                        func(op.Replica);
+                    }
+                    else
+                    {
+                        func(op.Replica);
+                    }
+                }
+            }
         }
 
-        public void Interval(Tuple<string, int> id)
+        public void Start(string op)
         {
-            throw new NotImplementedException();
+            CallOnRep(new Tuple<string, int>(op, -1), x => x.Start());
+        }
+
+        public void Interval(string op, int time)
+        {
+            CallOnRep(new Tuple<string, int>(op, -1), x => x.Interval(time));
         }
 
         public void Status()
         {
-            throw new NotImplementedException();
+            CallOnRep(new Tuple<string, int>("ALL", -1), x => x.Status());
         }
 
         public void Crash(Tuple<string, int> id)
         {
-            throw new NotImplementedException();
+            CallOnRep(id, x => x.Crash());
         }
 
         public void Freeze(Tuple<string, int> id)
         {
-            throw new NotImplementedException();
+            CallOnRep(id, x => x.Freeze());
         }
 
         public void Unfreeze(Tuple<string, int> id)
         {
-            throw new NotImplementedException();
-        }
-
-        public void Interval(string opid, int time)
-        {
-            throw new NotImplementedException();
+            CallOnRep(id, x => x.Unfreeze());
         }
     }
 }

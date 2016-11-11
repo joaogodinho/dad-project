@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommonCode.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -18,6 +19,7 @@ namespace CommonCode.Models
         public int Port { get; set; }
         public Tuple<string, string> Routing { get; set; }
         public OperatorSpec Spec { get; set; }
+        public IReplica Replica { get; set; }
 
         public Operator(Tuple<string, int> id, string pcs, string input, int port, Tuple<string, string> routing)
         {

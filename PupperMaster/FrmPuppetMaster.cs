@@ -1,6 +1,7 @@
 ﻿using CommonCode.Interfaces;
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace DADStorm.PuppetMaster
@@ -33,17 +34,17 @@ namespace DADStorm.PuppetMaster
                         using (stream)
                         {
                             string test = (new StreamReader(stream)).ReadToEnd();
-                            foreach (string s in test.Split('\n'))
+                            foreach (string s in test.Split('\n').Select(p => p.Trim()).ToArray<string>())
                             {
                                 if (!string.IsNullOrEmpty(s) && !s.StartsWith("%"))
                                 {
                                     if (s.StartsWith("Semantics"))
                                     {
-                                        puppet.Semantics = s.Split(' ')[1];
+                                        puppet.Semantics = s.Split(' ')[1].ToLower();
                                     }
                                     else if (s.StartsWith("LoggingLevel"))
                                     {
-                                        puppet.LoggingLevel = s.Split(' ')[1];
+                                        puppet.LoggingLevel = s.Split(' ')[1].ToLower();
                                     }
                                     else if (s.StartsWith("OP"))
                                     {
@@ -66,6 +67,7 @@ namespace DADStorm.PuppetMaster
                 catch (Exception ex)
                 {
                     MessageBox.Show("Error: Could not parse the configuration file. Original error: " + ex.Message);
+                    throw;
                 }
             }
         }
@@ -116,6 +118,7 @@ namespace DADStorm.PuppetMaster
         private void btnRunScript_Click(object sender, EventArgs e)
         {
             disableAll();
+            // TODO Spawn thread to execute the script, so it doesn't block UI
             IReplica replica = (IReplica) Activator.GetObject(typeof(IReplica), @"tcp://localhost:11000/op");
             replica.ReadFile();
             enableAll();
