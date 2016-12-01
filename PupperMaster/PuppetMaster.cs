@@ -215,7 +215,7 @@ namespace DADStorm.PuppetMaster
                     command = new CommandUnfreeze(values[1], int.Parse(values[2]));
                     break;
                 case "wait":
-                    command = new CommandWait(int.Parse(values[2]));
+                    command = new CommandWait(int.Parse(values[1]));
                     break;
                 default:
                     throw new Exception("Unknown command.");

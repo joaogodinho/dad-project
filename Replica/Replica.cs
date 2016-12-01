@@ -139,8 +139,11 @@ namespace Replica_project
         private void mainProcessingCycle(object blob)
         {
             DTO dto = (DTO)blob;
-            Console.WriteLine("Now processing tuple from " + dto.Sender + " tuple is : " + dto.Tuple.ToString());
+            DateTime time = DateTime.Now;
+            Console.WriteLine( time.Hour + ":" + time.Minute + ":" + time.Second + ":" + time.Millisecond + " - Now processing tuple from " + dto.Sender + " tuple is : " + String.Join("-",dto.Tuple.ToArray()));
+            Console.WriteLine();
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
+
             if (result.Count == 0) return;
             else
                 foreach (List<string> tuple in result)
@@ -155,7 +158,7 @@ namespace Replica_project
                             Tuple = tuple,
                             Receiver = MyOperator.DownIps[0].ToString()
                         };
-                        IReplica replica = (IReplica)Activator.GetObject(typeof(IReplica), dto.Receiver);
+                        IReplica replica = (IReplica)Activator.GetObject(typeof(IReplica), request.Receiver);
                         Console.WriteLine("Now Sending the request Downstream to Replica @ " + request.Receiver);
                         var requestResult = replica.processRequest(request);
                         Console.WriteLine("Replica @ " + request.Receiver + " has received the request and said : " + requestResult);

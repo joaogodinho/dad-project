@@ -9,7 +9,7 @@ namespace mylib
     public class Class1
     {
 
-        public IList<string> HelloWorld(IList<string> tuple)
+        public IList<IList<string>> HelloWorld(IList<IList<string>> tuple)
         {
             Console.WriteLine("Hello!");
             return tuple;

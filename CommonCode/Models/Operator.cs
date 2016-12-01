@@ -135,11 +135,8 @@ namespace CommonCode.Models
 
         public override List<List<string>> processTuple(List<string> tuple)
         {
-            List<string> prettyTuple = new List<string>();
-            foreach(string s in tuple)
-            {
-                prettyTuple.Add(s);
-            }
+            IList<IList<string>> magicCombo = new List<IList<string>>();
+            magicCombo.Add(tuple);
             var DLL = Assembly.LoadFile(AppDomain.CurrentDomain.BaseDirectory + Dll);
             Type target = null;
             foreach (Type lel in DLL.GetTypes())
@@ -151,8 +148,14 @@ namespace CommonCode.Models
             var c = Activator.CreateInstance(target);
             var method = target.GetMethod(Method);
 
-            var result = method.Invoke(c, new object[] { prettyTuple });
-            return (List<List<string>>) result;
+            IList<IList<string>> result = (IList < IList < string >>) method.Invoke(c, new object[] { magicCombo });
+            List<List<string>> magicList = new List<List<string>>();
+            foreach (var item in result)
+            {
+                List<string> element = new List<string>(item.AsEnumerable());
+                magicList.Add(element);
+            }
+            return magicList;
         }
     }
 }

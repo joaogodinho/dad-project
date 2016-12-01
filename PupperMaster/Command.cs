@@ -1,5 +1,6 @@
 ﻿using CommonCode.Interfaces;
 using CommonCode.Models;
+using System.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -31,13 +32,13 @@ namespace DADStorm.PuppetMaster
         public override void Execute(PuppetMaster pm)
         {
             // If this blows up, the config is using the wrong OPs, cause my code is fabulous
-            List<Operator> operators = pm.DOperators[ID];
-            foreach (Operator op in operators)
+            List<string> pcs = pm.DOperators[ID].Select(x => x.PCS).Distinct().ToList();
+            foreach (string process in pcs)
             {
                 // Get the PCS reference
-                IProcessCreationService pcs = pm.DPCS[op.PCS];
+                IProcessCreationService pcs_process = pm.DPCS[process];
                 // Fire away
-                pcs.Start(ID);
+                pcs_process.Start(ID);
             }
         }
     }
@@ -98,13 +99,13 @@ namespace DADStorm.PuppetMaster
         public override void Execute(PuppetMaster pm)
         {
             // If this blows up, the config is using the wrong OPs, cause my code is fabulous
-            List<Operator> operators = pm.DOperators[ID];
-            foreach (Operator op in operators)
+            List<string> pcs = pm.DOperators[ID].Select(x => x.PCS).Distinct().ToList();
+            foreach (string process in pcs)
             {
                 // Get the PCS reference
-                IProcessCreationService pcs = pm.DPCS[op.PCS];
+                IProcessCreationService pcs_process = pm.DPCS[process];
                 // Fire away
-                pcs.Interval(ID, Interval);
+                pcs_process.Interval(ID,Interval);
             }
         }
     }

@@ -12,7 +12,6 @@ namespace CommonCode.Interfaces
     {
         void Config(string loglevel, string semantics);
         void AddOperator(Operator op);
-        bool ProcessTask(DTO blob);
         Operator getOperator(Tuple<string, int> op_rep);
 
         void Start(string opid);
