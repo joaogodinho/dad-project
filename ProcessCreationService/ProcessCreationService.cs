@@ -84,78 +84,96 @@ namespace ProcessCreationService_project
         // TODO implement the call as a new thread
 
 
+        private void ConsoleLog(string msg)
+        {
+            DateTime time = DateTime.Now;
+            Console.WriteLine(time.ToString("[HH:mm:ss.fff]: ") + msg);
+        }
 
+        // For commands that take an OP
+        private void CallOnRep(string op, RemoteFuncCall func)
+        {
+            Operators[op].ForEach(x => func(x.Replica));
+        }
+
+        // For global commands, no OP
+        private void CallOnRep(RemoteFuncCall func)
+        {
+            Operators.Values.ToList().ForEach(x => x.ForEach(y => func(y.Replica)));
+        }
+
+        // For commands that take OP and ID
         private void CallOnRep(Tuple<string, int> id, RemoteFuncCall func)
         {
-            if (id.Item1 == "ALL")
+            List<Operator> operators = Operators[id.Item1];
+            foreach (Operator op in operators)
             {
-                Operators.Values.ToList().ForEach(x => x.ForEach(y => func(y.Replica)));
-            }
-            else
-            {
-                List<Operator> operators = Operators[id.Item1];
-                foreach (Operator op in operators)
+                if (op.Id.Item2 == id.Item2)
                 {
-                    if (id.Item2 != -1 && op.Id.Item2 == id.Item2)
-                    {
-                        func(op.Replica);
-                    }
-                    else
-                    {
-                        func(op.Replica);
-                    }
+                    func(op.Replica);
+                    break;
                 }
+                // wat?
+                /*else
+                {
+                    func(op.Replica);
+                }*/
             }
         }
 
         public void Start(string op)
         {
-            Operators[op].ForEach((x) => {
-                Console.WriteLine("Starting op @ " + x.Replica);
-                x.Replica.Start();
-            });
-            //CallOnRep(new Tuple<string, int>(op, -1), x => x.Start());
+            ConsoleLog("Starting " + op);
+            CallOnRep(op, x => x.Start());
+            //Operators[op].ForEach((x) => {
+            //    Console.WriteLine("Starting op" + op + " @ " + x.Replica);
+            //    x.Replica.Start();
+            //});
         }
 
         public void Interval(string op, int time)
         {
-            Operators[op].ForEach((x) => {
-                Console.WriteLine("Setting interval for " + op + " as " + time + "ms");
-                x.Replica.Interval(time);
-            });
+            ConsoleLog("Setting inverval on " + op + " as " + time);
+            CallOnRep(op, x => x.Interval(time));
+            //Operators[op].ForEach((x) => {
+            //    Console.WriteLine("Setting interval for " + op + " as " + time + "ms");
+            //    x.Replica.Interval(time);
+            //});
         }
 
         public void Status()
         {
-            //CallOnRep(new Tuple<string, int>("ALL", -1), x => x.Status());
+            CallOnRep(x => x.Status());
         }
 
         public void Crash(Tuple<string, int> id)
         {
-            Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
+            ConsoleLog("Crashing " + id.Item1 + " " + id.Item2);
+            CallOnRep(id, x => x.Crash());
+            /*Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
                 Console.WriteLine("Crashing op" + id.Item1 + "-" + id.Item2);
                 x.Replica.Crash();
-            });
+            });*/
         }
 
         public void Freeze(Tuple<string, int> id)
         {
-            Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
+            ConsoleLog("Freezing " + id.Item1 + " " + id.Item2);
+            CallOnRep(id, x => x.Freeze());
+            /*Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
                 Console.WriteLine("Freezing op"+id.Item1 +"-" + id.Item2);
                 x.Replica.Freeze();
-            });
+            });*/
         }
 
         public void Unfreeze(Tuple<string, int> id)
         {
-            Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
+            ConsoleLog("Unfreezing " + id.Item1 + " " + id.Item2);
+            CallOnRep(id, x => x.Unfreeze());
+            /*Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
                 Console.WriteLine("Unfreezing op" + id.Item1 + "-" + id.Item2);
                 x.Replica.Unfreeze();
-            });
+            });*/
         }
-
-
-
-
     }
 }

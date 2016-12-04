@@ -16,7 +16,7 @@ namespace CommonCode.Interfaces
         void ReadFile();
 
         void Start();
-        string Status();
+        void Status();
         void Interval(int time);
         void Crash();
         void Freeze();

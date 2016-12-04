@@ -123,32 +123,42 @@ namespace Replica_project
                             {
                                 dto.Receiver = null;
                             }
-                            lock (MyOperator) { 
+                            // Simulate upstream OP enqueuing tuples
+                            InBuffer.Enqueue(dto);
+                            // If the main cycle is ProcessTuples, main shouldn't be called here
+                            // No interval check here
+                            /*lock (MyOperator) { 
                                 while (CurrStatus != EStatus.RUNNING)
                                     Monitor.Wait(MyOperator);
                             }
-                            mainProcessingCycle(dto);
-
+                            mainProcessingCycle(dto);*/
                         }
                     }
+                    // Start normally
+                    ProcessTuples();
                 }
             }
             
+        }
+
+        private void ConsoleLog(string msg)
+        {
+            DateTime time = DateTime.Now;
+            Console.WriteLine(time.ToString("[HH:mm:ss.fff]: ") + msg);
         }
         
         private void mainProcessingCycle(object blob)
         {
             DTO dto = (DTO)blob;
-            DateTime time = DateTime.Now;
-            Console.WriteLine( time.Hour + ":" + time.Minute + ":" + time.Second + ":" + time.Millisecond + " - Now processing tuple from " + dto.Sender + " tuple is : " + String.Join("-",dto.Tuple.ToArray()));
-            Console.WriteLine();
+            ConsoleLog("Now processing tuple from " + dto.Sender + " tuple is: " + String.Join("-", dto.Tuple.ToArray()));
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
+            ConsoleLog("Finished processing tuple");
 
-            if (result.Count == 0) return;
+            if (result.Count == 0) { return; }
             else
+            {
                 foreach (List<string> tuple in result)
                 {
-                    Console.WriteLine("Finished processing tuple from " + dto.Sender + " result was : " + result.ToString());
                     //routing is primary for now
                     if (MyOperator.DownIps.Count > 0)
                     {
@@ -159,11 +169,12 @@ namespace Replica_project
                             Receiver = MyOperator.DownIps[0].ToString()
                         };
                         IReplica replica = (IReplica)Activator.GetObject(typeof(IReplica), request.Receiver);
-                        Console.WriteLine("Now Sending the request Downstream to Replica @ " + request.Receiver);
+                        ConsoleLog("Sending the tuple downstream to " + request.Receiver);
                         var requestResult = replica.processRequest(request);
-                        Console.WriteLine("Replica @ " + request.Receiver + " has received the request and said : " + requestResult);
+                        ConsoleLog("Response from downstream was: " + requestResult);
                     }
                 }
+            }
         }
 
         public string PingRequest()
@@ -173,6 +184,7 @@ namespace Replica_project
 
         public void Start()
         {
+            ConsoleLog("Got Start command");
             CurrStatus = EStatus.RUNNING;
             lock (MyOperator)
             {
@@ -182,6 +194,7 @@ namespace Replica_project
 
         public void Interval(int time)
         {
+            ConsoleLog("Got Interval command");
             Debug.Assert(time >= 0);
             IInterval = time;
         }
@@ -189,16 +202,19 @@ namespace Replica_project
 
         public void Crash()
         {
+            ConsoleLog("Got Crash command");
             Task.Run(() => Process.GetCurrentProcess().Kill());
         }
 
         public void Freeze()
         {
+            ConsoleLog("Got Freeze command");
             CurrStatus = EStatus.FROZEN;
         }
 
         public void Unfreeze()
         {
+            ConsoleLog("Got Unfreeze command");
             CurrStatus = EStatus.RUNNING;
             lock (MyOperator)
             {
@@ -206,8 +222,9 @@ namespace Replica_project
             }
         }
 
-        public string Status()
+        public void Status()
         {
+            ConsoleLog("Got Status command");
             string result = "Status = ";
             switch (CurrStatus)
             {
@@ -224,8 +241,7 @@ namespace Replica_project
                     result += "UNKNOWN";
                     break;
             }
-            Console.WriteLine(result);
-            return result;
+            ConsoleLog(result);
         }
     }
 }

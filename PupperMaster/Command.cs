@@ -133,7 +133,7 @@ namespace DADStorm.PuppetMaster
                     // Get the PCS reference
                     IProcessCreationService pcs = pm.DPCS[op.PCS];
                     // Fire away
-                    pcs.Crash(new Tuple<string, int>(ID, RepID));
+                    pcs.Freeze(new Tuple<string, int>(ID, RepID));
                 }
             }
         }
@@ -178,7 +178,7 @@ namespace DADStorm.PuppetMaster
                     // Get the PCS reference
                     IProcessCreationService pcs = pm.DPCS[op.PCS];
                     // Fire away
-                    pcs.Crash(new Tuple<string, int>(ID, RepID));
+                    pcs.Unfreeze(new Tuple<string, int>(ID, RepID));
                 }
             }
         }
