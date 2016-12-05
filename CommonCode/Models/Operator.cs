@@ -37,7 +37,6 @@ namespace CommonCode.Models
         public abstract List<List<string>> processTuple(List<string> tuple);
     }
     
-    // TODO Why the lock?
     [Serializable]
     public class OperatorCount : OperatorSpec
     {
@@ -45,8 +44,9 @@ namespace CommonCode.Models
         public override List<List<string>> processTuple(List<string> tuple)
         {
             List<List<string>> tuples = new List<List<string>>();
-            int count = Interlocked.Increment(ref CurrentCount);
-            Console.WriteLine(count);
+            List<string> innerTup = new List<string>();
+            innerTup.Add((++CurrentCount).ToString());
+            tuples.Add(innerTup);
             return tuples;
         }
     }
