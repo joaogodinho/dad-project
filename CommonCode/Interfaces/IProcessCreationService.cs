@@ -12,6 +12,7 @@ namespace CommonCode.Interfaces
     {
         void Config(string loglevel, string semantics);
         void AddOperator(Operator op);
+        void Reset();
         Operator getOperator(Tuple<string, int> op_rep);
 
         void Start(string opid);

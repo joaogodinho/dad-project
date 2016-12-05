@@ -37,6 +37,7 @@ namespace CommonCode.Models
         public abstract List<List<string>> processTuple(List<string> tuple);
     }
     
+    // TODO Why the lock?
     [Serializable]
     public class OperatorCount : OperatorSpec
     {
@@ -50,27 +51,27 @@ namespace CommonCode.Models
         }
     }
 
-    // TODO Use HashSet instead of List
     [Serializable]
     public class OperatorUniq : OperatorSpec
     {
-        public int FieldNumber { get; set; }
-        public List<string> Hits { get; set; }
+        private int FieldNumber { get; set; }
+        private HashSet<string> Set { get; set; }
 
         public OperatorUniq(int fieldNumb)
         {
-            FieldNumber = fieldNumb-1;
-            Hits = new List<string>();
+            FieldNumber = fieldNumb - 1;
+            Set = new HashSet<string>();
         }
+
         public override List<List<string>> processTuple(List<string> tuple)
         {
             List<List<string>> tuples = new List<List<string>>();
-            if (Hits.Contains(tuple[FieldNumber]))
-                return tuples;
-            else Hits.Add(tuple[FieldNumber]);
-            tuples.Add(tuple);
+            // Returns true if item is not in set
+            if (Set.Add(tuple[FieldNumber]))
+            {
+                tuples.Add(tuple);
+            }
             return tuples;
-
         }
     }
 
@@ -85,40 +86,46 @@ namespace CommonCode.Models
         }
     }
 
-    // TODO Define a lambda or whatever C# calls it to spare the switch
     [Serializable]
     public class OperatorFilter : OperatorSpec
     {
-        public int Field { get; set; }
-        public string Condition { get; set; }
-        public string Value { get; set; }
+        private delegate bool CondFunc(List<string> tuple);
+        private CondFunc Filter { get; set; }
+        private int Field { get; set; }
+        private string Value { get; set; }
         public OperatorFilter(int field, string condition, string value)
         {
-            Field = field-1;
-            Condition = condition;
+            Field = field - 1;
             Value = value;
+            // SUCH LAMBDA, MUCH WOW
+            switch (condition)
+            {
+                case "=":
+                    Filter = (x) => { return x[Field] == Value; };
+                    break;
+                case "<":
+                    Filter = (x) => { return x[Field].CompareTo(Value) < 0; };
+                    break;
+                case ">":
+                    Filter = (x) => { return x[Field].CompareTo(Value) > 0; };
+                    break;
+                default:
+                    throw new Exception("Invalid Operator condition");
+            }
         }
+
         public override List<List<string>> processTuple(List<string> tuple)
         {
             List<List<string>> tuples = new List<List<string>>();
-            if (IsFilterAMatch(tuple, Field, Condition, Value))
-                tuples.Add(tuple);
-            return tuples;
-        }
-
-        private bool IsFilterAMatch(List<string> tuple, int field, string condition, string compareTo)
-        {
-            switch (condition)
+            if (Filter(tuple))
             {
-                case "=": return tuple[field] == compareTo;
-                case "<": return tuple[field].CompareTo(compareTo) < 0;
-                case ">": return tuple[field].CompareTo(compareTo) > 0;
-                default: return false;
+                tuples.Add(tuple);
             }
+            return tuples;
         }
     }
 
-    // TODO Test this implementation
+    // TODO IMPORTANT Clean this up?
     [Serializable]
     public class OperatorCustom : OperatorSpec
     {

@@ -8,21 +8,24 @@ namespace DADStorm.PuppetMaster
 {
     public partial class frmPuppetMaster : Form
     {
-        private PuppetMaster puppet;
+        private PuppetMaster Puppet;
 
         public frmPuppetMaster()
         {
             InitializeComponent();
-            puppet = new PuppetMaster(this);
+            Puppet = new PuppetMaster(this);
         }
 
         public void LogMsg(string message)
         {
-            this.txtOutput.AppendText(message + "\r\n");
+            DateTime time = DateTime.Now;
+            this.txtOutput.AppendText(time.ToString("[HH:mm:ss.fff]: ") + message + "\r\n");
         }
 
         private void btnLoad_Click(object sender, EventArgs e)
         {
+            // Reset PM on load
+            Puppet.Reset();
             Stream stream = null;
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -40,29 +43,26 @@ namespace DADStorm.PuppetMaster
                                 {
                                     if (s.StartsWith("Semantics"))
                                     {
-                                        puppet.Semantics = s.Split(' ')[1].ToLower();
+                                        Puppet.Semantics = s.Split(' ')[1].ToLower();
                                     }
                                     else if (s.StartsWith("LoggingLevel"))
                                     {
-                                        puppet.LoggingLevel = s.Split(' ')[1].ToLower();
+                                        Puppet.LoggingLevel = s.Split(' ')[1].ToLower();
                                     }
                                     else if (s.StartsWith("OP"))
                                     {
-                                        puppet.ParseAndAddOperator(s);
+                                        Puppet.ParseAndAddOperator(s);
                                     }
                                     else lstScript.Items.Add(s);
                                 }
                             }
                             // File has been parsed, we can now send the configs to the PCS'
-                            puppet.SendConfigToPCS();
+                            Puppet.SendConfigToPCS();
                         }
                     }
                     lstScript.SelectedIndex = 0;
                     btnStep.Enabled = true;
                     btnRunScript.Enabled = true;
-
-                    // puppet.notifyPCS();
-                    // TODO: Stop whatever is happening (stop all OPs, etc)
                 }
                 catch (Exception ex)
                 {
@@ -85,7 +85,9 @@ namespace DADStorm.PuppetMaster
             }
 
             disableAll();
-            puppet.ParseCommand(itemVal);
+            if (!itemVal.ToLower().Contains("wait")) {
+                Puppet.ParseCommand(itemVal);
+            }
             enableAll();
             // Auto scroll the script
             lstScript.TopIndex = lstScript.SelectedIndex - 2;
@@ -115,11 +117,35 @@ namespace DADStorm.PuppetMaster
             }
         }
 
+        // TODO Launch commands async? except for wait
         private void btnRunScript_Click(object sender, EventArgs e)
         {
+            while (lstScript.SelectedIndex != -1)
+            {
+                string itemVal = lstScript.SelectedItem.ToString();
+                if (lstScript.Items.Count - 1 == lstScript.SelectedIndex)
+                {
+                    lstScript.SelectedIndex = -1;
+                }
+                else
+                {
+                    lstScript.SelectedIndex++;
+                }
+
+                disableAll();
+                Puppet.ParseCommand(itemVal);
+                enableAll();
+                // Auto scroll the script
+                lstScript.TopIndex = lstScript.SelectedIndex - 2;
+            }
+        }
+
+        private void btnRunCmd_Click(object sender, EventArgs e)
+        {
+            // TODO validate null input
+            string itemVal = txtInput.Text;
             disableAll();
-            IReplica replica = (IReplica) Activator.GetObject(typeof(IReplica), @"tcp://localhost:11000/op");
-            replica.Start();
+            Puppet.ParseCommand(itemVal);
             enableAll();
         }
     }

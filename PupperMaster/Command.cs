@@ -3,6 +3,7 @@ using CommonCode.Models;
 using System.Linq;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace DADStorm.PuppetMaster 
 {
@@ -10,6 +11,7 @@ namespace DADStorm.PuppetMaster
     public abstract class Command
     {
         // TODO Refactor the execute, code is repeated
+        // TODO Maybe be more verbal when executing commands on PM GUI
         public abstract void Execute(PuppetMaster pm);
     }
 
@@ -151,7 +153,7 @@ namespace DADStorm.PuppetMaster
 
         public override void Execute(PuppetMaster pm)
         {
-            throw new NotImplementedException();
+            Thread.Sleep(Time);
         }
     }
 

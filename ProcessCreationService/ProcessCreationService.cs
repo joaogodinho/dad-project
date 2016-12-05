@@ -21,10 +21,7 @@ namespace ProcessCreationService_project
         private string MyName { get; set; }
         private IPuppet PuppetMaster { get; set; }
 
-        // TODO This should be inside Operators
-        private Dictionary<string, List<IReplica>> Replicas;
         private Dictionary<string, List<Operator>> Operators;
-        // TODO Need to pass this down to the Replicas
         private string LoggingLevel { get; set; }
         private string Semantics { get; set; }
 
@@ -39,7 +36,6 @@ namespace ProcessCreationService_project
 
         public ProcessCreationService()
         {
-            Replicas = new Dictionary<string, List<IReplica>>();
             Operators = new Dictionary<string, List<Operator>>();
         }
 
@@ -52,13 +48,13 @@ namespace ProcessCreationService_project
         {
             LoggingLevel = loglevel;
             Semantics = semantics;
-            Console.WriteLine("Got LoggingLevel: " + LoggingLevel);
-            Console.WriteLine("Got Semantics: " + Semantics);
+            ConsoleLog("Got LoggingLevel: " + LoggingLevel);
+            ConsoleLog("Got Semantics: " + Semantics);
         }
 
         public void AddOperator(Operator op)
         {
-            Console.WriteLine("Adding new operator with ID: " + op.Id);
+            ConsoleLog("Adding new operator with ID: " + op.Id);
             List<Operator> tempOperators = null;
             Operators.TryGetValue(op.Id.Item1,out tempOperators);
             if (tempOperators == null)
@@ -72,6 +68,11 @@ namespace ProcessCreationService_project
 
         }
 
+        private void ConsoleLog(string msg)
+        {
+            DateTime time = DateTime.Now;
+            Console.WriteLine(time.ToString("[HH:mm:ss.fff]: ") + msg);
+        }
 
         public Operator getOperator(Tuple<string, int> op_rep)
         {
@@ -79,16 +80,6 @@ namespace ProcessCreationService_project
         }
 
         private delegate void RemoteFuncCall(IReplica rep);
-        // Maybe this is what they mean when they say the commands should be async,
-        // the calls to the replicas should prob be async
-        // TODO implement the call as a new thread
-
-
-        private void ConsoleLog(string msg)
-        {
-            DateTime time = DateTime.Now;
-            Console.WriteLine(time.ToString("[HH:mm:ss.fff]: ") + msg);
-        }
 
         // For commands that take an OP
         private void CallOnRep(string op, RemoteFuncCall func)
@@ -113,11 +104,6 @@ namespace ProcessCreationService_project
                     func(op.Replica);
                     break;
                 }
-                // wat?
-                /*else
-                {
-                    func(op.Replica);
-                }*/
             }
         }
 
@@ -125,20 +111,12 @@ namespace ProcessCreationService_project
         {
             ConsoleLog("Starting " + op);
             CallOnRep(op, x => x.Start());
-            //Operators[op].ForEach((x) => {
-            //    Console.WriteLine("Starting op" + op + " @ " + x.Replica);
-            //    x.Replica.Start();
-            //});
         }
 
         public void Interval(string op, int time)
         {
             ConsoleLog("Setting inverval on " + op + " as " + time);
             CallOnRep(op, x => x.Interval(time));
-            //Operators[op].ForEach((x) => {
-            //    Console.WriteLine("Setting interval for " + op + " as " + time + "ms");
-            //    x.Replica.Interval(time);
-            //});
         }
 
         public void Status()
@@ -150,30 +128,30 @@ namespace ProcessCreationService_project
         {
             ConsoleLog("Crashing " + id.Item1 + " " + id.Item2);
             CallOnRep(id, x => x.Crash());
-            /*Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
-                Console.WriteLine("Crashing op" + id.Item1 + "-" + id.Item2);
-                x.Replica.Crash();
-            });*/
+            // Remove the crashed replica from the PCS
+            List<Operator> operators = Operators[id.Item1];
+            operators.Remove(operators.FirstOrDefault(op => op.Id.Item2 == id.Item2));
         }
 
         public void Freeze(Tuple<string, int> id)
         {
             ConsoleLog("Freezing " + id.Item1 + " " + id.Item2);
             CallOnRep(id, x => x.Freeze());
-            /*Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
-                Console.WriteLine("Freezing op"+id.Item1 +"-" + id.Item2);
-                x.Replica.Freeze();
-            });*/
         }
 
         public void Unfreeze(Tuple<string, int> id)
         {
             ConsoleLog("Unfreezing " + id.Item1 + " " + id.Item2);
             CallOnRep(id, x => x.Unfreeze());
-            /*Operators[id.Item1].Where(x => x.Id.Item2 == id.Item2).ToList().ForEach((x) => {
-                Console.WriteLine("Unfreezing op" + id.Item1 + "-" + id.Item2);
-                x.Replica.Unfreeze();
-            });*/
+        }
+
+        // If no command was executed, this crashes due to forced connection closed
+        public void Reset()
+        {
+            // Crash all replicas
+            Operators.Values.ToList().ForEach(x => x.ForEach(y => y.Replica.Crash()));
+            // Reset ops
+            Operators = new Dictionary<string, List<Operator>>();
         }
     }
 }
