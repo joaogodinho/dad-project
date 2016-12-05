@@ -125,13 +125,6 @@ namespace Replica_project
                             }
                             // Simulate upstream OP enqueuing tuples
                             InBuffer.Enqueue(dto);
-                            // If the main cycle is ProcessTuples, main shouldn't be called here
-                            // No interval check here
-                            /*lock (MyOperator) { 
-                                while (CurrStatus != EStatus.RUNNING)
-                                    Monitor.Wait(MyOperator);
-                            }
-                            mainProcessingCycle(dto);*/
                         }
                     }
                     // Start normally
@@ -155,11 +148,13 @@ namespace Replica_project
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
             ConsoleLog("Finished processing tuple");
 
+
             if (result.Count == 0) { return; }
             else
             {
                 foreach (List<string> tuple in result)
                 {
+                    ConsoleLog("Result = " + String.Join(",", tuple.ToArray()));
                     //routing is primary for now
                     if (MyOperator.DownIps.Count > 0)
                     {
