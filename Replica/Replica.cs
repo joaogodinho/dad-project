@@ -150,7 +150,8 @@ namespace Replica_project
         private void mainProcessingCycle(object blob)
         {
             DTO dto = (DTO)blob;
-            ConsoleLog("Now processing tuple from " + dto.Sender + " tuple is: " + String.Join("-", dto.Tuple.ToArray()));
+            ConsoleLog("Now processing tuple from " + dto.Sender);
+            ConsoleLog("Tuple = " + String.Join(",", dto.Tuple.ToArray()));
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
             ConsoleLog("Finished processing tuple");
 

@@ -7,8 +7,8 @@
     <ProjectGuid>{8502E558-578F-4A1D-B76A-9D1C936F811F}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>PupperMaster</RootNamespace>
-    <AssemblyName>PupperMaster</AssemblyName>
+    <RootNamespace>PuppetMaster</RootNamespace>
+    <AssemblyName>PuppetMaster</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

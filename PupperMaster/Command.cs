@@ -40,6 +40,7 @@ namespace DADStorm.PuppetMaster
                 // Get the PCS reference
                 IProcessCreationService pcs_process = pm.DPCS[process];
                 // Fire away
+                pm.SendMsg("Starting " + ID);
                 pcs_process.Start(ID);
             }
         }
@@ -68,6 +69,7 @@ namespace DADStorm.PuppetMaster
                     // Get the PCS reference
                     IProcessCreationService pcs = pm.DPCS[op.PCS];
                     // Fire away
+                    pm.SendMsg("Crashing " + ID + " " + RepID);
                     pcs.Crash(new Tuple<string, int>(ID, RepID));
                 }
             }
@@ -83,6 +85,7 @@ namespace DADStorm.PuppetMaster
             foreach (KeyValuePair<String, IProcessCreationService> pcs in pm.DPCS)
             {
                 // You get a status, he gets a status, everyone gets a status
+                pm.SendMsg("System status");
                 pcs.Value.Status();
             }
         }
@@ -107,6 +110,7 @@ namespace DADStorm.PuppetMaster
                 // Get the PCS reference
                 IProcessCreationService pcs_process = pm.DPCS[process];
                 // Fire away
+                pm.SendMsg("Interval " + ID);
                 pcs_process.Interval(ID,Interval);
             }
         }
@@ -135,6 +139,7 @@ namespace DADStorm.PuppetMaster
                     // Get the PCS reference
                     IProcessCreationService pcs = pm.DPCS[op.PCS];
                     // Fire away
+                    pm.SendMsg("Freezing " + ID + " " + RepID);
                     pcs.Freeze(new Tuple<string, int>(ID, RepID));
                 }
             }
@@ -180,6 +185,7 @@ namespace DADStorm.PuppetMaster
                     // Get the PCS reference
                     IProcessCreationService pcs = pm.DPCS[op.PCS];
                     // Fire away
+                    pm.SendMsg("Unfreezing " + ID + " " + RepID);
                     pcs.Unfreeze(new Tuple<string, int>(ID, RepID));
                 }
             }

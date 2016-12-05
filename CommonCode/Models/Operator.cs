@@ -125,44 +125,51 @@ namespace CommonCode.Models
         }
     }
 
-    // TODO IMPORTANT Clean this up?
     [Serializable]
     public class OperatorCustom : OperatorSpec
     {
-        public string Dll { get; set; }
-        public string ClassName { get; set; }
-        public string Method { get; set; }
+        private string Dll { get; set; }
+        private string ClassName { get; set; }
+        private string MethodName { get; set; }
+        private Object ClassInstance { get; set; }
+        private MethodInfo ClassMethod { get; set; }
 
         public OperatorCustom(string dll, string className, string method)
         {
             Dll = dll;
             ClassName = className;
-            Method = method;
+            MethodName = method;
         }
 
         public override List<List<string>> processTuple(List<string> tuple)
         {
-            IList<IList<string>> magicCombo = new List<IList<string>>();
-            magicCombo.Add(tuple);
-            var DLL = Assembly.LoadFile(AppDomain.CurrentDomain.BaseDirectory + Dll);
-            Type target = null;
-            foreach (Type lel in DLL.GetTypes())
+            // Need to make this here, because whatever is in the DLL might not be serializable,
+            // so it cannot be passed on the TCPChannel. ¯\_(ツ)_/¯
+            if (ClassInstance == null && ClassMethod == null)
             {
-                if (lel.Name.Contains(ClassName)) { 
-                    target = lel;break;
+                Assembly ADLL = Assembly.LoadFile(AppDomain.CurrentDomain.BaseDirectory + Dll);
+                Type target = null;
+                foreach (Type type in ADLL.GetTypes())
+                {
+                    if (type.IsClass && type.Name.Contains(ClassName))
+                    {
+                        target = type;
+                        break;
+                    }
                 }
-            }
-            var c = Activator.CreateInstance(target);
-            var method = target.GetMethod(Method);
 
-            IList<IList<string>> result = (IList < IList < string >>) method.Invoke(c, new object[] { magicCombo });
-            List<List<string>> magicList = new List<List<string>>();
-            foreach (var item in result)
-            {
-                List<string> element = new List<string>(item.AsEnumerable());
-                magicList.Add(element);
+                ClassInstance = Activator.CreateInstance(target);
+                ClassMethod = target.GetMethod(MethodName);
             }
-            return magicList;
+
+            IList<IList<string>> result = (IList<IList<string>>)ClassMethod.Invoke(ClassInstance, new object[] { tuple });
+
+            List<List<string>> output = new List<List<string>>();
+            foreach (IList<string> tup in result)
+            {
+                output.Add(new List<string>(tup.AsEnumerable()));
+            }
+            return output;
         }
     }
 }
