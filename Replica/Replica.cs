@@ -253,7 +253,7 @@ namespace Replica_project
                 case "random":
                     return (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[myrandom.Next(MyOperator.DownIps.Count)].ToString());
                 case "hashing":
-                    int field = int.Parse(MyOperator.Routing.Item2);
+                    int field = int.Parse(MyOperator.Routing.Item2) - 1;
                     int targetReplica = GetHashValue(tuple[field], MyOperator.DownIps.Count);
                     return (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[targetReplica].ToString());
                 default:
