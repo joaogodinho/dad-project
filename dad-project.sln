@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replica", "Replica\Replica.csproj", "{8ADEA2BE-F083-475F-A35F-E8C07B415F12}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessCreationService", "ProcessCreationService\ProcessCreationService.csproj", "{7CEEC244-2AC0-464C-BBAA-C6D41CD00B7A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8ADEA2BE-F083-475F-A35F-E8C07B415F12} = {8ADEA2BE-F083-475F-A35F-E8C07B415F12}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonCode", "CommonCode\CommonCode.csproj", "{67936986-B186-446A-AB64-C4301812A055}"
 EndProject

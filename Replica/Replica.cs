@@ -26,29 +26,25 @@ namespace Replica_project
         private string LogLevel { get; set; }
         private EStatus CurrStatus { get; set; } = EStatus.STOPPED;
         private int IInterval { get; set; } = 0;
-        // private ConcurrentQueue<string[]> InBuffer { get; set; } = new ConcurrentQueue<string[]>();
-        private ConcurrentQueue<string[]> OutBuffer { get; set; } = new ConcurrentQueue<string[]>();
+        private IPuppet PuppetMaster { get; set; }
 
-        //Add fields as needed
         public Random myrandom { get; set; }
-        public string MyId { get; set; }
         public Uri MyUri { get; set; }
         public string CurrentSemantic { get; set; }
         public static Operator MyOperator { get; set; }
-        // This should just be a tuple? One for input, another for output and make a thread just to push the tuples out
         public BlockingCollection<DTO> InBuffer { get; set; }
         public IProcessCreationService PCS { get; set; }
         public Tuple<string,int> OPAndRep { get; set; }
         
-
-        public Replica(string id, string myurl, Tuple<string,int> op_rep, string loglevel)
+        // TODO Deal with unused first arg
+        public Replica(string id, string myurl, Tuple<string,int> op_rep, string loglevel, string pmurl)
         {
             myrandom = new Random();
-            MyId = id;
             MyUri = new Uri(myurl);
             InBuffer = new BlockingCollection<DTO>();
             OPAndRep = op_rep;
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
+            PuppetMaster = (IPuppet)Activator.GetObject(typeof(IReplica), pmurl);
             MyOperator = PCS.getOperator(OPAndRep);
             LogLevel = loglevel;
             Task.Run(() =>
@@ -64,7 +60,6 @@ namespace Replica_project
         private void ProcessTuples()
         {
             while (true) {
-                ConsoleLog("Here");
                 lock (MyOperator)
                 {
                     while (CurrStatus != EStatus.RUNNING)
@@ -79,21 +74,9 @@ namespace Replica_project
             }
         }
 
-        // The loop that send the tuples to the downstream operators
-        // Like above, this should be its own thread, but shouldn't depend on the invocations
-        private void SendTuples()
-        {
-            // While output queue is empty, block
-                // Take the item and send it to the downstream replicas
-                if (LogLevel == "full")
-                {
-                    // Notify either PCS or Puppet of the emitted tuple, now choose one...
-                }
-        }
-
         public bool processRequest(DTO blob)
         {
-            Console.WriteLine("Received a tuple from " + blob.Sender);
+            ConsoleLog("Received a tuple from " + blob.Sender);
             InBuffer.Add(blob);
             return true;
         }
@@ -157,7 +140,12 @@ namespace Replica_project
             {
                 foreach (List<string> tuple in result)
                 {
-                    ConsoleLog("Result = " + String.Join(",", tuple.ToArray()));
+                    string msg = "Emitting " + String.Join(",", tuple);
+                    ConsoleLog(msg);
+                    if (LogLevel == "full")
+                    {
+                        PuppetMaster.SendMsg(MyOperator.Id.Item1 + "#" + MyOperator.Id.Item2 + ": " + msg);
+                    }
                     
                     if (MyOperator.DownIps.Count > 0)
                     {
@@ -178,12 +166,12 @@ namespace Replica_project
 
         public string PingRequest()
         {
-            return "hey, you reached " + this.MyId + " on uri " + this.MyUri.ToString();
+            return "PONG";
         }
 
         public void Start()
         {
-            ConsoleLog("Got Start command");
+            ConsoleLog("Starting...");
             CurrStatus = EStatus.RUNNING;
             lock (MyOperator)
             {
@@ -193,15 +181,14 @@ namespace Replica_project
 
         public void Interval(int time)
         {
-            ConsoleLog("Got Interval command");
             Debug.Assert(time >= 0);
+            ConsoleLog("Setting interval to " + time);
             IInterval = time;
         }
         
 
         public void Crash()
         {
-            ConsoleLog("Got Crash command");
             Task.Run(() => Process.GetCurrentProcess().Kill());
         }
 
@@ -223,7 +210,6 @@ namespace Replica_project
 
         public void Status()
         {
-            ConsoleLog("Got Status command");
             string result = "Status = ";
             switch (CurrStatus)
             {

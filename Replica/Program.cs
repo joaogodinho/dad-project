@@ -15,14 +15,24 @@ namespace Replica_project
             OP_ID,
             REP_ID,
             PORT,
-            URI
+            URI,
+            LOG,
+            PM
         }
 
         static void Main(string[] args)
         {
             Console.Title = args[(int)EArgs.OP_ID] + " #" + args[(int)EArgs.REP_ID];
+
             ChannelServices.RegisterChannel(new TcpChannel(int.Parse(args[(int)EArgs.PORT])), false);
-            Replica ThisReplica = new Replica(args[(int)EArgs.REP_ID], args[(int)EArgs.URI], new Tuple<string,int>(args[(int)EArgs.OP_ID],int.Parse(args[(int)EArgs.REP_ID])),"light");
+
+            Replica ThisReplica = new Replica(args[(int)EArgs.REP_ID],
+                args[(int)EArgs.URI],
+                new Tuple<string,int>(args[(int)EArgs.OP_ID],
+                int.Parse(args[(int)EArgs.REP_ID])),
+                args[(int)EArgs.LOG],
+                args[(int)EArgs.PM]);
+
             RemotingServices.Marshal(ThisReplica,"op", typeof(IReplica));
             Console.WriteLine("Replica has been started, waiting commands and inputs");
             Console.WriteLine("Press enter to exit");

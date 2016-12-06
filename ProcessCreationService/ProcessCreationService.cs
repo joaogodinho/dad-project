@@ -19,7 +19,6 @@ namespace ProcessCreationService_project
 
         private Uri MyUri { get; set; }
         private string MyName { get; set; }
-        private IPuppet PuppetMaster { get; set; }
 
         private Dictionary<string, List<Operator>> Operators;
         private string LoggingLevel { get; set; }
@@ -64,7 +63,8 @@ namespace ProcessCreationService_project
             }
             op.Replica = (IReplica)Activator.GetObject(typeof(IReplica), "tcp://localhost:" + op.Port + "/op");
             tempOperators.Add(op);
-            Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Replica.exe", op.Id.Item1 + " " + op.Id.Item2 + " " + op.Port + " " + op.PCS + " " + LoggingLevel);
+            Process.Start(AppDomain.CurrentDomain.BaseDirectory + "Replica.exe",
+                String.Format("{0} {1} {2} {3} {4} {5}", op.Id.Item1, op.Id.Item2, op.Port, op.PCS, LoggingLevel, "tcp://localhost:10000/puppetmaster"));
 
         }
 
