@@ -11,7 +11,6 @@ namespace DADStorm.PuppetMaster
     public abstract class Command
     {
         // TODO Refactor the execute, code is repeated
-        // TODO Maybe be more verbal when executing commands on PM GUI
         public abstract void Execute(PuppetMaster pm);
     }
 

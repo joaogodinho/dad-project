@@ -34,7 +34,7 @@ namespace Replica_project
         public string CurrentSemantic { get; set; }
         public static Operator MyOperator { get; set; }
         // This should just be a tuple? One for input, another for output and make a thread just to push the tuples out
-        public ConcurrentQueue<DTO> InBuffer { get; set; }
+        public BlockingCollection<DTO> InBuffer { get; set; }
         public IProcessCreationService PCS { get; set; }
         public Tuple<string,int> OPAndRep { get; set; }
 
@@ -42,7 +42,7 @@ namespace Replica_project
         {
             MyId = id;
             MyUri = new Uri(myurl);
-            InBuffer = new ConcurrentQueue<DTO>();
+            InBuffer = new BlockingCollection<DTO>();
             OPAndRep = op_rep;
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
             MyOperator = PCS.getOperator(OPAndRep);
@@ -60,14 +60,14 @@ namespace Replica_project
         private void ProcessTuples()
         {
             while (true) {
+                ConsoleLog("Here");
                 lock (MyOperator)
                 {
                     while (CurrStatus != EStatus.RUNNING)
                         Monitor.Wait(MyOperator);
                 }
-                    DTO tuple = null;
-                    if (InBuffer.TryDequeue(out tuple))
-                        mainProcessingCycle(tuple);
+                    DTO tuple = InBuffer.Take();
+                    mainProcessingCycle(tuple);
 
                     if (IInterval != 0)
                     {
@@ -91,7 +91,7 @@ namespace Replica_project
         public bool processRequest(DTO blob)
         {
             Console.WriteLine("Received a tuple from " + blob.Sender);
-            InBuffer.Enqueue(blob);
+            InBuffer.Add(blob);
             return true;
         }
 
@@ -124,7 +124,7 @@ namespace Replica_project
                                 dto.Receiver = null;
                             }
                             // Simulate upstream OP enqueuing tuples
-                            InBuffer.Enqueue(dto);
+                            InBuffer.Add(dto);
                         }
                     }
                     // Start normally
