@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Text;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace Replica_project
 {
@@ -29,20 +30,23 @@ namespace Replica_project
         private ConcurrentQueue<string[]> OutBuffer { get; set; } = new ConcurrentQueue<string[]>();
 
         //Add fields as needed
+        public Random myrandom { get; set; }
         public string MyId { get; set; }
         public Uri MyUri { get; set; }
         public string CurrentSemantic { get; set; }
         public static Operator MyOperator { get; set; }
         // This should just be a tuple? One for input, another for output and make a thread just to push the tuples out
-        public ConcurrentQueue<DTO> InBuffer { get; set; }
+        public BlockingCollection<DTO> InBuffer { get; set; }
         public IProcessCreationService PCS { get; set; }
         public Tuple<string,int> OPAndRep { get; set; }
+        
 
         public Replica(string id, string myurl, Tuple<string,int> op_rep, string loglevel)
         {
+            myrandom = new Random();
             MyId = id;
             MyUri = new Uri(myurl);
-            InBuffer = new ConcurrentQueue<DTO>();
+            InBuffer = new BlockingCollection<DTO>();
             OPAndRep = op_rep;
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
             MyOperator = PCS.getOperator(OPAndRep);
@@ -65,15 +69,15 @@ namespace Replica_project
                     while (CurrStatus != EStatus.RUNNING)
                         Monitor.Wait(MyOperator);
                 }
-                    DTO tuple = null;
-                    if (InBuffer.TryDequeue(out tuple))
-                        mainProcessingCycle(tuple);
+                DTO tuple = null;
+                tuple = InBuffer.Take();
+                mainProcessingCycle(tuple);
 
-                    if (IInterval != 0)
-                    {
-                        Thread.Sleep(IInterval);
-                    }
+                if (IInterval != 0)
+                {
+                    Thread.Sleep(IInterval);
                 }
+            }
         }
 
         // The loop that send the tuples to the downstream operators
@@ -91,7 +95,7 @@ namespace Replica_project
         public bool processRequest(DTO blob)
         {
             Console.WriteLine("Received a tuple from " + blob.Sender);
-            InBuffer.Enqueue(blob);
+            InBuffer.Add(blob);
             return true;
         }
 
@@ -124,7 +128,7 @@ namespace Replica_project
                                 dto.Receiver = null;
                             }
                             // Simulate upstream OP enqueuing tuples
-                            InBuffer.Enqueue(dto);
+                            InBuffer.Add(dto);
                         }
                     }
                     // Start normally
@@ -155,16 +159,16 @@ namespace Replica_project
                 foreach (List<string> tuple in result)
                 {
                     ConsoleLog("Result = " + String.Join(",", tuple.ToArray()));
-                    //routing is primary for now
+                    
                     if (MyOperator.DownIps.Count > 0)
                     {
+                        IReplica replica = getDownstreamReplica(tuple);
                         DTO request = new DTO()
                         {
                             Sender = dto.Sender,
                             Tuple = tuple,
-                            Receiver = MyOperator.DownIps[0].ToString()
+                            Receiver = MyOperator.DownIps[0].ToString() //TODO REMOVE THIS, IT IS VERY UNNECESSARY, MY FRIEND, THIS PIECE OF CODE DOES NOTHING, I WANT YOU TO REMOVE IT, MUCH THANKS.
                         };
-                        IReplica replica = (IReplica)Activator.GetObject(typeof(IReplica), request.Receiver);
                         ConsoleLog("Sending the tuple downstream to " + request.Receiver);
                         var requestResult = replica.processRequest(request);
                         ConsoleLog("Response from downstream was: " + requestResult);
@@ -239,5 +243,34 @@ namespace Replica_project
             }
             ConsoleLog(result);
         }
+
+
+        private IReplica getDownstreamReplica(List<string> tuple = null)
+        {
+            switch (MyOperator.Routing.Item1)
+            {
+                case "primary":
+                    return (IReplica) Activator.GetObject(typeof(IReplica), MyOperator.DownIps[0].ToString());
+                case "random":
+                    return (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[myrandom.Next(MyOperator.DownIps.Count)].ToString());
+                case "hashing":
+                    int field = int.Parse(MyOperator.Routing.Item2);
+                    int targetReplica = GetHashValue(tuple[field], MyOperator.DownIps.Count);
+                    return (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[targetReplica].ToString());
+                default:
+                    throw new Exception("you dun goofed, there's no routing defined for this operator");
+            }
+        }
+
+        private static int GetHashValue(string str, int value)
+        {
+            int counter = 0;
+            foreach (char character in str.ToCharArray())
+            {
+                counter = +character;
+            }
+            return counter % value;
+        }
+
     }
 }
