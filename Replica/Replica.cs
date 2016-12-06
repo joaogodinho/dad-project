@@ -64,15 +64,14 @@ namespace Replica_project
         private void ProcessTuples()
         {
             while (true) {
+                ConsoleLog("Here");
                 lock (MyOperator)
                 {
                     while (CurrStatus != EStatus.RUNNING)
                         Monitor.Wait(MyOperator);
                 }
-                DTO tuple = null;
-                tuple = InBuffer.Take();
+                DTO tuple = InBuffer.Take();
                 mainProcessingCycle(tuple);
-
                 if (IInterval != 0)
                 {
                     Thread.Sleep(IInterval);

@@ -142,11 +142,14 @@ namespace DADStorm.PuppetMaster
 
         private void btnRunCmd_Click(object sender, EventArgs e)
         {
-            // TODO validate null input
             string itemVal = txtInput.Text;
-            disableAll();
-            Puppet.ParseCommand(itemVal);
-            enableAll();
+            if (itemVal != "")
+            {
+                disableAll();
+                Puppet.ParseCommand(itemVal);
+                txtInput.Text = "";
+                enableAll();
+            }
         }
     }
 }

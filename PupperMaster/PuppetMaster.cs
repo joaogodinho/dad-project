@@ -123,8 +123,29 @@ namespace DADStorm.PuppetMaster
             int replicas = int.Parse(values[(int)EConfig.REP_VALUE]);
 
             Debug.Assert(values[(int)EConfig.ROUTE_KEYWORD].ToLower() == "routing");
-            // TODO Change to deal with other routing methods
             Tuple<string, string> routing = new Tuple<string, string>("primary", "");
+            if (replicas > 1)
+            {
+                string routing_val = values[(int)EConfig.ROUTE_VALUE].ToLower();
+                // TODO Use Enum for routing Tuple
+                if (routing_val == "random")
+                {
+                    routing = new Tuple<string, string>("random", "");
+                }
+                else if (routing_val == "primary")
+                {
+                    routing = new Tuple<string, string>("primary", "");
+                }
+                else if (routing_val.StartsWith("hashing"))
+                {
+                    string id = routing_val.Split('(')[1].Split(')')[0];
+                    routing = new Tuple<string, string>("hashing", id);
+                }
+                else
+                {
+                    throw new Exception("Invalid routing");
+                }
+            }
 
             // Create the operator's list here, since we can now know how many there will be
             List<Operator> opList = new List<Operator>();
