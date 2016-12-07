@@ -123,28 +123,17 @@ namespace DADStorm.PuppetMaster
             int replicas = int.Parse(values[(int)EConfig.REP_VALUE]);
 
             Debug.Assert(values[(int)EConfig.ROUTE_KEYWORD].ToLower() == "routing");
+            // Defaults to primary routing if none of the if's match
             Tuple<string, string> routing = new Tuple<string, string>("primary", "");
-            if (replicas > 1)
+            string routing_val = values[(int)EConfig.ROUTE_VALUE].ToLower();
+            if (routing_val == "random")
             {
-                string routing_val = values[(int)EConfig.ROUTE_VALUE].ToLower();
-                // TODO Use Enum for routing Tuple
-                if (routing_val == "random")
-                {
-                    routing = new Tuple<string, string>("random", "");
-                }
-                else if (routing_val == "primary")
-                {
-                    routing = new Tuple<string, string>("primary", "");
-                }
-                else if (routing_val.StartsWith("hashing"))
-                {
-                    string id = routing_val.Split('(')[1].Split(')')[0];
-                    routing = new Tuple<string, string>("hashing", id);
-                }
-                else
-                {
-                    throw new Exception("Invalid routing");
-                }
+                routing = new Tuple<string, string>("random", "");
+            }
+            else if (routing_val.StartsWith("hashing"))
+            {
+                string id = routing_val.Split('(')[1].Split(')')[0];
+                routing = new Tuple<string, string>("hashing", id);
             }
 
             // Create the operator's list here, since we can now know how many there will be
@@ -206,7 +195,8 @@ namespace DADStorm.PuppetMaster
 
             List<Operator> receivingOperators = null;
             DOperators.TryGetValue(input, out receivingOperators);
-            // So it doesn't blow up if the operators are declared in a wrong order, and for the first OP
+            // So it doesn't blow up for the first OP
+            // OPs need to be ordered in config file, or this won't work
             if (receivingOperators!= null)
             {
                 foreach (var item in receivingOperators)

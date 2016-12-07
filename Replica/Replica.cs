@@ -8,9 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Text;
 using System.Collections.Generic;
-using System.Security.Cryptography;
+using System.Net.Sockets;
 
 namespace Replica_project
 {
@@ -81,43 +80,45 @@ namespace Replica_project
             return true;
         }
 
-        // TODO Make all of this async?
         public void ReadFile()
         {
 
             Stream stream = null;
-            if ((stream = File.Open(AppDomain.CurrentDomain.BaseDirectory + MyOperator.Input, FileMode.Open)) != null)
+            string fileContent = "";
+            if ((stream = File.OpenRead(AppDomain.CurrentDomain.BaseDirectory + MyOperator.Input)) != null)
             {
                 using (stream)
                 {
-                    string test = (new StreamReader(stream)).ReadToEnd();
-                    foreach (string s in test.Split('\n'))
-                    {
-                        if (!s.StartsWith("%") && !string.IsNullOrEmpty(s))
-                        {
-                            List<string> tuple = s.Split(',').Select(p => p.Trim()).ToList<string>();
+                    fileContent = (new StreamReader(stream)).ReadToEnd();
+                }
+            } else
+            {
+                throw new Exception("Could not open file.");
+            }
+            foreach (string s in fileContent.Split('\n'))
+            {
+                if (!s.StartsWith("%") && !string.IsNullOrEmpty(s))
+                {
+                    List<string> tuple = s.Split(',').Select(p => p.Trim()).ToList<string>();
                             
-                            DTO dto = new DTO();
-                            dto.Sender = MyUri.ToString();
-                            dto.Tuple = tuple;
-                            // Might not be the best solution for this, but for now...
-                            if (MyOperator.DownIps.Count() > 0)
-                            {
-                                dto.Receiver = MyOperator.DownIps[0].ToString();
-                            } 
-                            else
-                            {
-                                dto.Receiver = null;
-                            }
-                            // Simulate upstream OP enqueuing tuples
-                            InBuffer.Add(dto);
-                        }
+                    DTO dto = new DTO();
+                    dto.Sender = MyUri.ToString();
+                    dto.Tuple = tuple;
+                    // Might not be the best solution for this, but for now...
+                    if (MyOperator.DownIps.Count() > 0)
+                    {
+                        dto.Receiver = MyOperator.DownIps[0].ToString();
+                    } 
+                    else
+                    {
+                        dto.Receiver = null;
                     }
-                    // Start normally
-                    ProcessTuples();
+                    // Simulate upstream OP enqueuing tuples
+                    InBuffer.Add(dto);
                 }
             }
-            
+            // Start normally
+            ProcessTuples();
         }
 
         private void ConsoleLog(string msg)
@@ -129,10 +130,8 @@ namespace Replica_project
         private void mainProcessingCycle(object blob)
         {
             DTO dto = (DTO)blob;
-            ConsoleLog("Now processing tuple from " + dto.Sender);
-            ConsoleLog("Tuple = " + String.Join(",", dto.Tuple.ToArray()));
+            ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
-            ConsoleLog("Finished processing tuple");
 
 
             if (result.Count == 0) { return; }
@@ -149,19 +148,36 @@ namespace Replica_project
                     
                     if (MyOperator.DownIps.Count > 0)
                     {
-                        IReplica replica = getDownstreamReplica(tuple);
-                        DTO request = new DTO()
-                        {
-                            Sender = dto.Sender,
-                            Tuple = tuple,
-                            Receiver = MyOperator.DownIps[0].ToString() //TODO REMOVE THIS, IT IS VERY UNNECESSARY, MY FRIEND, THIS PIECE OF CODE DOES NOTHING, I WANT YOU TO REMOVE IT, MUCH THANKS.
-                        };
-                        ConsoleLog("Sending the tuple downstream to " + request.Receiver);
-                        var requestResult = replica.processRequest(request);
-                        ConsoleLog("Response from downstream was: " + requestResult);
+                        SendTuple(tuple);
                     }
                 }
             }
+        }
+
+        private void SendTuple(List<string> tuple)
+        {
+            ConsoleLog("Sending tuple downstream...");
+            while (MyOperator.DownIps.Count > 0)
+            {
+                int index = getDownstreamReplica(tuple);
+                IReplica downRep = (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[index].ToString());
+                DTO req = new DTO()
+                {
+                    Sender = MyOperator.Id.ToString(),
+                    Tuple = tuple,
+                    Receiver = null
+                };
+                try
+                {
+                    downRep.processRequest(req);
+                    return;
+                } catch (SocketException e)
+                {
+                    ConsoleLog("Downstream is down, rerouting...");
+                    MyOperator.DownIps.RemoveAt(index);
+                }
+            }
+            ConsoleLog("No downstream available.");
         }
 
         public string PingRequest()
@@ -230,18 +246,17 @@ namespace Replica_project
         }
 
 
-        private IReplica getDownstreamReplica(List<string> tuple = null)
+        private int getDownstreamReplica(List<string> tuple = null)
         {
             switch (MyOperator.Routing.Item1)
             {
                 case "primary":
-                    return (IReplica) Activator.GetObject(typeof(IReplica), MyOperator.DownIps[0].ToString());
+                    return 0;
                 case "random":
-                    return (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[myrandom.Next(MyOperator.DownIps.Count)].ToString());
+                    return myrandom.Next(MyOperator.DownIps.Count());
                 case "hashing":
                     int field = int.Parse(MyOperator.Routing.Item2) - 1;
-                    int targetReplica = GetHashValue(tuple[field], MyOperator.DownIps.Count);
-                    return (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[targetReplica].ToString());
+                    return GetHashValue(tuple[field], MyOperator.DownIps.Count);
                 default:
                     throw new Exception("you dun goofed, there's no routing defined for this operator");
             }
@@ -252,7 +267,7 @@ namespace Replica_project
             int counter = 0;
             foreach (char character in str.ToCharArray())
             {
-                counter = +character;
+                counter += character;
             }
             return counter % value;
         }
