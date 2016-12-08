@@ -21,5 +21,6 @@ namespace CommonCode.Interfaces
         void Crash();
         void Freeze();
         void Unfreeze();
+        bool TupleProcessed(DTO req);
     }
 }

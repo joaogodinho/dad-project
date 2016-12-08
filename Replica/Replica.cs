@@ -22,14 +22,30 @@ namespace Replica_project
             FROZEN
         }
 
+        // Time before resending a tuple
+        private const int PROCESS_TIMEOUT = 5000;
+
         private string LogLevel { get; set; }
         private EStatus CurrStatus { get; set; } = EStatus.STOPPED;
         private int IInterval { get; set; } = 0;
         private IPuppet PuppetMaster { get; set; }
+        private Semantic MySemantic { get; set; }
+        private ConcurrentDictionary<string, byte> ProcessedTuples { get; set; }
+        private delegate int GetDownstreamDel(List<string> tuple);
+        private GetDownstreamDel GetDownStream { get; set; }
+        private int tuplecounter;
+        public int TupleCounter
+        {
+            get
+            {
+                return tuplecounter++;
+            }
+            set { tuplecounter = value; }
+        }
+        private BlockingCollection<string> ConsoleBuffer { get; set; } = new BlockingCollection<string>();
 
-        public Random myrandom { get; set; }
+        public Random MyRandom { get; set; }
         public Uri MyUri { get; set; }
-        public string CurrentSemantic { get; set; }
         public static Operator MyOperator { get; set; }
         public BlockingCollection<DTO> InBuffer { get; set; }
         public IProcessCreationService PCS { get; set; }
@@ -38,20 +54,52 @@ namespace Replica_project
         // TODO Deal with unused first arg
         public Replica(string id, string myurl, Tuple<string,int> op_rep, string loglevel, string pmurl)
         {
-            myrandom = new Random();
+            TupleCounter = 0;
+            // TODO Receive this as an argument
+            // MySemantic = AtMostOnce;
+            MySemantic = AtLeastOnce;
+            MyRandom = new Random();
             MyUri = new Uri(myurl);
             InBuffer = new BlockingCollection<DTO>();
             OPAndRep = op_rep;
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
             PuppetMaster = (IPuppet)Activator.GetObject(typeof(IReplica), pmurl);
             MyOperator = PCS.getOperator(OPAndRep);
+
+            switch (MyOperator.Routing.Item1)
+            {
+                case "primary":
+                    GetDownStream = (x) => { return 0; };
+                    break;
+                case "random":
+                    GetDownStream = (x) => { return MyRandom.Next(MyOperator.DownIps.Count()); };
+                    break;
+                case "hashing":
+                    int field = int.Parse(MyOperator.Routing.Item2) - 1;
+                    GetDownStream = (x) => { return GetHashValue(x[field], MyOperator.DownIps.Count); };
+                    break;
+                default:
+                    ConsoleLog("Got invalid routing.");
+                    throw new Exception("Invalid Routing");
+            }
+
             LogLevel = loglevel;
+            ProcessedTuples = new ConcurrentDictionary<string, byte>();
             Task.Run(() =>
             {
                 if (MyOperator.Input.StartsWith("OP"))
                     ProcessTuples();
                 else ReadFile();
             });
+
+            Task.Run(() =>
+            {
+                while (true)
+                {
+                    Console.WriteLine(ConsoleBuffer.Take());
+                }
+            }
+            );
         }
 
         // The loop that processes tuples from the input and puts them in the output
@@ -59,12 +107,12 @@ namespace Replica_project
         private void ProcessTuples()
         {
             while (true) {
+                DTO tuple = InBuffer.Take();
                 lock (MyOperator)
                 {
                     while (CurrStatus != EStatus.RUNNING)
                         Monitor.Wait(MyOperator);
                 }
-                DTO tuple = InBuffer.Take();
                 mainProcessingCycle(tuple);
                 if (IInterval != 0)
                 {
@@ -104,6 +152,8 @@ namespace Replica_project
                     DTO dto = new DTO();
                     dto.Sender = MyUri.ToString();
                     dto.Tuple = tuple;
+                    // No point in having an ID when reading from file
+                    dto.ID = "";
                     // Might not be the best solution for this, but for now...
                     if (MyOperator.DownIps.Count() > 0)
                     {
@@ -124,7 +174,7 @@ namespace Replica_project
         private void ConsoleLog(string msg)
         {
             DateTime time = DateTime.Now;
-            Console.WriteLine(time.ToString("[HH:mm:ss.fff]: ") + msg);
+            ConsoleBuffer.Add(time.ToString("[HH:mm:ss.fff]: ") + msg);
         }
         
         private void mainProcessingCycle(object blob)
@@ -132,7 +182,8 @@ namespace Replica_project
             DTO dto = (DTO)blob;
             ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
-
+            // Add to the processed queue
+            ProcessedTuples.TryAdd(dto.ID, 0);
 
             if (result.Count == 0) { return; }
             else
@@ -148,7 +199,8 @@ namespace Replica_project
                     
                     if (MyOperator.DownIps.Count > 0)
                     {
-                        SendTuple(tuple);
+                        // Send asynchronously
+                        Task.Run(() => SendTuple(tuple));
                     }
                 }
             }
@@ -159,17 +211,18 @@ namespace Replica_project
             ConsoleLog("Sending tuple downstream...");
             while (MyOperator.DownIps.Count > 0)
             {
-                int index = getDownstreamReplica(tuple);
+                int index = GetDownStream(tuple);
                 IReplica downRep = (IReplica)Activator.GetObject(typeof(IReplica), MyOperator.DownIps[index].ToString());
                 DTO req = new DTO()
                 {
                     Sender = MyOperator.Id.ToString(),
                     Tuple = tuple,
-                    Receiver = null
+                    Receiver = null,
+                    ID = OPAndRep.ToString() + TupleCounter
                 };
                 try
                 {
-                    downRep.processRequest(req);
+                    MySemantic(downRep, req);
                     return;
                 } catch (SocketException e)
                 {
@@ -178,6 +231,32 @@ namespace Replica_project
                 }
             }
             ConsoleLog("No downstream available.");
+        }
+
+        delegate void Semantic(IReplica replica, DTO req);
+
+        // Keep firing until there is a confirmation is was processed
+        private void AtLeastOnce(IReplica replica, DTO req)
+        {
+            bool answer_received = false;
+            while (!answer_received)
+            {
+                // Send the tuple
+                replica.processRequest(req);
+                Thread.Sleep(PROCESS_TIMEOUT);
+                ConsoleLog("Checking if" + req.ID + " was processed...");
+                if (replica.TupleProcessed(req))
+                {
+                    ConsoleLog(req.ID +" Processed.");
+                    answer_received = true;
+                }
+            }
+        }
+
+        // Fire one time, whatever happens, happens
+        private void AtMostOnce(IReplica replica, DTO req)
+        {
+            replica.processRequest(req);
         }
 
         public string PingRequest()
@@ -253,7 +332,7 @@ namespace Replica_project
                 case "primary":
                     return 0;
                 case "random":
-                    return myrandom.Next(MyOperator.DownIps.Count());
+                    return MyRandom.Next(MyOperator.DownIps.Count());
                 case "hashing":
                     int field = int.Parse(MyOperator.Routing.Item2) - 1;
                     return GetHashValue(tuple[field], MyOperator.DownIps.Count);
@@ -272,5 +351,15 @@ namespace Replica_project
             return counter % value;
         }
 
+        public bool TupleProcessed(DTO req)
+        {
+            ConsoleLog("Got tuple processed question for " + req.ID);
+            byte _;
+            if (ProcessedTuples.TryRemove(req.ID, out _))
+            {
+                return true;
+            }
+            return false;
+        }
     }
 }

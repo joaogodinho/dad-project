@@ -12,12 +12,13 @@ namespace CommonCode.Comms
         //add fields as desired,
         
 
-        public DTO(CommandType cmd, string sender, string receiver, List<string> tuple)
+        public DTO(CommandType cmd, string sender, string receiver, List<string> tuple, string id)
         {
             Sender = sender;
             Receiver = receiver;
             Tuple = new List<string>();
             cmdType = cmd;
+            ID = id;
         }
 
         public DTO()
@@ -36,7 +37,7 @@ namespace CommonCode.Comms
         public List<string> Tuple { get; set; }
 
         public CommandType cmdType { get; set; }
-
+        public string ID { get; set; }
 
         public enum CommandType : int { PUPPETMASTERINFO = 1, CREATEOPERATOR, STARTOPERATOR, }
 

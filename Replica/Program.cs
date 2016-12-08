@@ -1,5 +1,6 @@
 ﻿using CommonCode.Interfaces;
 using System;
+using System.Collections;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
@@ -9,6 +10,7 @@ namespace Replica_project
     class Program
     {
         private const string NAME = "op";
+        private const int TIMEOUT = 1000;
 
         private enum EArgs
         {
@@ -24,7 +26,13 @@ namespace Replica_project
         {
             Console.Title = args[(int)EArgs.OP_ID] + " #" + args[(int)EArgs.REP_ID];
 
-            ChannelServices.RegisterChannel(new TcpChannel(int.Parse(args[(int)EArgs.PORT])), false);
+            BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+
+            IDictionary props = new Hashtable();
+            props["port"] = int.Parse(args[(int) EArgs.PORT]);
+            props["timeout"] = TIMEOUT;
+
+            ChannelServices.RegisterChannel(new TcpChannel(props, null, provider), false);
 
             Replica ThisReplica = new Replica(args[(int)EArgs.REP_ID],
                 args[(int)EArgs.URI],
@@ -34,6 +42,7 @@ namespace Replica_project
                 args[(int)EArgs.PM]);
 
             RemotingServices.Marshal(ThisReplica,"op", typeof(IReplica));
+
             Console.WriteLine("Replica has been started, waiting commands and inputs");
             Console.WriteLine("Press enter to exit");
             Console.ReadLine();
