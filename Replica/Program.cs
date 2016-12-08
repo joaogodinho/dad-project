@@ -19,6 +19,7 @@ namespace Replica_project
             PORT,
             URI,
             LOG,
+            SEM,
             PM
         }
 
@@ -26,6 +27,7 @@ namespace Replica_project
         {
             Console.Title = args[(int)EArgs.OP_ID] + " #" + args[(int)EArgs.REP_ID];
 
+            // TODO All of this could be inside Replica itself
             BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
 
             IDictionary props = new Hashtable();
@@ -34,11 +36,12 @@ namespace Replica_project
 
             ChannelServices.RegisterChannel(new TcpChannel(props, null, provider), false);
 
-            Replica ThisReplica = new Replica(args[(int)EArgs.REP_ID],
+            Replica ThisReplica = new Replica(
                 args[(int)EArgs.URI],
                 new Tuple<string,int>(args[(int)EArgs.OP_ID],
                 int.Parse(args[(int)EArgs.REP_ID])),
                 args[(int)EArgs.LOG],
+                args[(int)EArgs.SEM],
                 args[(int)EArgs.PM]);
 
             RemotingServices.Marshal(ThisReplica,"op", typeof(IReplica));
