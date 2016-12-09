@@ -15,6 +15,13 @@ namespace Replica_project
 {
     public class Replica : MarshalByRefObject, IReplica
     {
+        public override object InitializeLifetimeService()
+        {
+
+            return null;
+
+        }
+
         private enum EStatus
         { 
             STOPPED,
@@ -164,12 +171,12 @@ namespace Replica_project
                     // Ignore ID if already processed
                     // This garantees exactly-once for same replica
                     if (ProcessedTuplesID.TryGetValue(dto.ID, out _)) { continue; }
-                    ConsoleLog("Tuple was not processed here");
 
                     if (!AreOtherProcessing(dto))
                     {
                         ConsoleLog("Other are not processing.");
                         result = ProcessingOperation(dto);
+                        
                     }
                     else
                     {
@@ -265,8 +272,33 @@ namespace Replica_project
             
             ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
             List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
-            // Add to the processed id queue
-            ProcessedTuplesID.TryAdd(dto.ID, 0);
+            if (ExactlyFlag)
+            {
+                // Notify other replicas tuple was processed
+                foreach (IReplica replica in OtherReplicas)
+                {
+                    try
+                    {
+                        replica.SetAsProcessed(dto.ID);
+                    }
+                    catch (SocketException e)
+                    {
+                        ConsoleLog("One other replica died!");
+                        lock (OtherReplicasLock)
+                        {
+                            OtherReplicas.Remove(replica);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ConsoleLog("Unexpected exception in ExactlyOnce:");
+                        ConsoleLog(e.ToString());
+                        throw;
+                    }
+                }
+                // Add to the processed id queue
+                ProcessedTuplesID.TryAdd(dto.ID, 0);
+            }
             return result;
         }
 
@@ -347,28 +379,6 @@ namespace Replica_project
         private void ExactlyOnce(IReplica downReplica, DTO req)
         {
             AtLeastOnce(downReplica, req);
-            // Notify other replicas tuple was processed
-            foreach (IReplica replica in OtherReplicas)
-            {
-                try
-                {
-                    replica.SetAsProcessed(req.ID);
-                } catch (SocketException e)
-                {
-                    ConsoleLog("One other replica died!");
-                    lock (OtherReplicasLock)
-                    {
-                        OtherReplicas.Remove(replica);
-                    }
-                } catch (Exception e)
-                {
-                    ConsoleLog("Unexpected exception in ExactlyOnce:");
-                    ConsoleLog(e.ToString());
-                    throw;
-                }
-            }
-
-            ProcessedTuplesID.TryAdd(req.ID, 0);
             byte _;
             lock (BeingProcessedLock)
             {
@@ -469,6 +479,7 @@ namespace Replica_project
                     result += "UNKNOWN";
                     break;
             }
+            result += " " + ProcessedTuplesID.Count + " Tuples processed";
             ConsoleLog(result);
         }
 

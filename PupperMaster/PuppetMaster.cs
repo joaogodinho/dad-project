@@ -16,6 +16,13 @@ namespace DADStorm.PuppetMaster
 {
     public class PuppetMaster : MarshalByRefObject, IPuppet
     {
+        public override object InitializeLifetimeService()
+        {
+
+            return null;
+
+        }
+
         private static frmPuppetMaster MyForm;
 
         public const int PORT = 10000;

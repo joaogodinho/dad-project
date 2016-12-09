@@ -14,6 +14,13 @@ namespace ProcessCreationService_project
 {
     public class ProcessCreationService : MarshalByRefObject, IProcessCreationService
     {
+        public override object InitializeLifetimeService()
+        {
+
+            return null;
+
+        }
+
         public const int PORT = 10001;
         public const string NAME = "pcs";
 
