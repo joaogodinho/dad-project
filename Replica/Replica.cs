@@ -58,7 +58,6 @@ namespace Replica_project
         private const int PROCESS_TIMEOUT = 2000;
         private Object TupleCounterLock = new Object();
         private Object BeingProcessedLock = new Object();
-        private Object OtherReplicasLock = new object();
         private bool ExactlyFlag = false;
         private int tuplecounter;
         private int TupleCounter
@@ -284,10 +283,6 @@ namespace Replica_project
                     catch (SocketException e)
                     {
                         ConsoleLog("One other replica died!");
-                        lock (OtherReplicasLock)
-                        {
-                            OtherReplicas.Remove(replica);
-                        }
                     }
                     catch (Exception e)
                     {
@@ -347,7 +342,6 @@ namespace Replica_project
         // Makes sure tuple with the given ID is not being processed elsewhere
         private bool AreOtherProcessing(DTO dto)
         {
-
             // If any other replica is processing this tuple
             foreach (IReplica replica in OtherReplicas)
             {
@@ -357,14 +351,12 @@ namespace Replica_project
                     {
                         return true;
                     }
-                } catch (SocketException e)
+                }
+                catch (SocketException e)
                 {
                     ConsoleLog("One other replica died!");
-                    lock (OtherReplicasLock)
-                    {
-                        OtherReplicas.Remove(replica);
-                    }
-                } catch (Exception e)
+                }
+                catch (Exception e)
                 {
                     ConsoleLog("Unexpected exception in AreOtherProcessing:");
                     ConsoleLog(e.ToString());
