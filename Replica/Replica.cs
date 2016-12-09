@@ -46,8 +46,13 @@ namespace Replica_project
         // Semantics related
         private SemanticDel MySemantic { get; set; }
         private ConcurrentDictionary<string, byte> ProcessedTuplesID { get; set; } = new ConcurrentDictionary<string, byte>();
+        private ConcurrentDictionary<string, byte> BeingProcessedTuplesID { get; set; } = new ConcurrentDictionary<string, byte>();
+        private List<IReplica> OtherReplicas = new List<IReplica>();
         private const int PROCESS_TIMEOUT = 2000;
         private Object TupleCounterLock = new Object();
+        private Object BeingProcessedLock = new Object();
+        private Object OtherReplicasLock = new object();
+        private bool ExactlyFlag = false;
         private int tuplecounter;
         private int TupleCounter
         {
@@ -69,9 +74,12 @@ namespace Replica_project
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
             PuppetMaster = (IPuppet)Activator.GetObject(typeof(IReplica), pmurl);
             MyOperator = PCS.getOperator(OPAndRep);
-            Console.WriteLine("My Replicas are @ " + String.Join(";",MyOperator.ReplicasUris));
             SetRouting(MyOperator.Routing);
 
+            foreach (string url in MyOperator.ReplicasUris)
+            {
+                OtherReplicas.Add((IReplica)Activator.GetObject(typeof(IReplica), url));
+            }
             TupleCounter = 0;
             SetSemantics(semantics);
 
@@ -124,7 +132,9 @@ namespace Replica_project
                     MySemantic = AtLeastOnce;
                     break;
                 case "exactly-once":
-                    throw new NotImplementedException("Exactly-once not implemented.");
+                    MySemantic = ExactlyOnce;
+                    ExactlyFlag = true;
+                    break;
                 default:
                     ConsoleLog("Invalid semantic.");
                     throw new Exception("Invalid semantics");
@@ -142,18 +152,24 @@ namespace Replica_project
                         Monitor.Wait(MyOperator);
                 }
 
-                byte _;
-                // Exactly-once starts here
-                if (ProcessedTuplesID.TryGetValue(dto.ID, out _)) { continue; }
-                // set processing = X
-                // foreach other replica
-                    // check if being processed or already processed
-                // Process the tuple
-                List<List<string>> result = ProcessingOperation(dto);
-
-                //verificar se não foi já processado, por mim e por outras replicas (notificar que vais processar este tuplo)
-                //caso já tenha sido processado ou esteja a ser processado, continue;
-                //no fim do processamento, avisar que já foi processado às outras replicas, adicionar aos processados (replicas primeiro, meus no final)
+                List<List<string>> result = new List<List<string>>();
+                if (ExactlyFlag)
+                {
+                    if (AreOtherProcessing(dto))
+                    {
+                        result = ProcessingOperation(dto);
+                    }
+                    else
+                    {
+                        // Add the tuple to the input again, in case the guy processing crashes
+                        InBuffer.Add(dto);
+                        // Check next tuple
+                        continue;
+                    }
+                } else
+                {
+                    result = ProcessingOperation(dto);
+                }
 
                 // Throw this to someone else, my cycle is for processing only
                 Task.Run(() =>
@@ -169,21 +185,15 @@ namespace Replica_project
                         // Send asynchronously
                         Task.Run(() => SendTuple(tuple));
                     }
-
-                    if (IInterval != 0)
-                    {
-                        Thread.Sleep(IInterval);
-                    }
                 });
+
+                if (IInterval != 0)
+                {
+                    Thread.Sleep(IInterval);
+                }
             }
         }
 
-        public bool processRequest(DTO blob)
-        {
-            ConsoleLog("Received a tuple: " + blob.ID);
-            InBuffer.Add(blob);
-            return true;
-        }
 
         public void ReadFile()
         {
@@ -287,6 +297,76 @@ namespace Replica_project
             ConsoleLog("No downstream available.");
         }
 
+        // Makes sure tuple with the given ID is not being processed elsewhere
+        private bool AreOtherProcessing(DTO dto)
+        {
+            byte _;
+            // Ignore ID if already processed
+            // This garantees exactly-once for same replica
+            if (ProcessedTuplesID.TryGetValue(dto.ID, out _)) { return false; }
+
+            // Set the tuple as being processed
+            BeingProcessedTuplesID.TryAdd(dto.ID, 0);
+
+            // If any other replica is processing this tuple
+            foreach (IReplica replica in OtherReplicas)
+            {
+                try
+                {
+                    if (replica.BeingProcessed(dto.ID))
+                    {
+                        return false;
+                    }
+                } catch (SocketException e)
+                {
+                    ConsoleLog("One other replica died!");
+                    lock (OtherReplicasLock)
+                    {
+                        OtherReplicas.Remove(replica);
+                    }
+                } catch (Exception e)
+                {
+                    ConsoleLog("Unexpected exception in AreOtherProcessing:");
+                    ConsoleLog(e.ToString());
+                    throw;
+                }
+            }
+            return true;
+        }
+
+        // Identical to AtLeastOnce, but changes processed and beingprocessed status, as well as
+        // broadcasting to other replicas
+        private void ExactlyOnce(IReplica downReplica, DTO req)
+        {
+            AtLeastOnce(downReplica, req);
+            // Notify other replicas tuple was processed
+            foreach (IReplica replica in OtherReplicas)
+            {
+                try
+                {
+                    replica.SetAsProcessed(req.ID);
+                } catch (SocketException e)
+                {
+                    ConsoleLog("One other replica died!");
+                    lock (OtherReplicasLock)
+                    {
+                        OtherReplicas.Remove(replica);
+                    }
+                } catch (Exception e)
+                {
+                    ConsoleLog("Unexpected exception in ExactlyOnce:");
+                    ConsoleLog(e.ToString());
+                    throw;
+                }
+            }
+
+            ProcessedTuplesID.TryAdd(req.ID, 0);
+            byte _;
+            lock (BeingProcessedLock)
+            {
+                BeingProcessedTuplesID.TryRemove(req.ID, out _);
+            }
+        }
 
         // Keep firing until there is a confirmation is was processed
         private void AtLeastOnce(IReplica replica, DTO req)
@@ -315,6 +395,13 @@ namespace Replica_project
         public string PingRequest()
         {
             return "PONG";
+        }
+
+        public bool processRequest(DTO blob)
+        {
+            ConsoleLog("Received a tuple: " + blob.ID);
+            InBuffer.Add(blob);
+            return true;
         }
 
         public void Start()
@@ -413,6 +500,23 @@ namespace Replica_project
                 return true;
             }
             return false;
+        }
+
+        public bool BeingProcessed(string id)
+        {
+            byte _;
+            bool status = false;
+            // Don't allow touching on being processed if someone is making questions
+            lock (BeingProcessedLock)
+            {
+                status = BeingProcessedTuplesID.TryGetValue(id, out _);
+            }
+            return status;
+        }
+
+        public void SetAsProcessed(string id)
+        {
+            ProcessedTuplesID.TryAdd(id, 0);
         }
     }
 }

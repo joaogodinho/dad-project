@@ -21,6 +21,9 @@ namespace CommonCode.Interfaces
         void Crash();
         void Freeze();
         void Unfreeze();
+        // TODO Just use the ID, smaller object
         bool TupleProcessed(DTO req);
+        bool BeingProcessed(string id);
+        void SetAsProcessed(string id);
     }
 }
