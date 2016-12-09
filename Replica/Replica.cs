@@ -45,7 +45,8 @@ namespace Replica_project
 
         // Semantics related
         private SemanticDel MySemantic { get; set; }
-        private ConcurrentDictionary<string, byte> ProcessedTuples { get; set; } = new ConcurrentDictionary<string, byte>();
+        private HashSet<string> ProcessedTuples { get; set; } = new HashSet<string>();
+        private ConcurrentDictionary<string, byte> ProcessedTuplesID { get; set; } = new ConcurrentDictionary<string, byte>();
         private const int PROCESS_TIMEOUT = 2000;
         private Object TupleCounterLock = new Object();
         private int tuplecounter;
@@ -224,10 +225,19 @@ namespace Replica_project
         
         private List<List<string>> ProcessingOperation(DTO dto)
         {
-            ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
-            List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
-            // Add to the processed queue
-            ProcessedTuples.TryAdd(dto.ID, 0);
+            string simpleTuple = String.Join(",", dto.Tuple);
+            List<List<string>> result = new List<List<string>>();
+            if (!ProcessedTuples.Contains(simpleTuple))
+            {
+                ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
+                result = MyOperator.Spec.processTuple(dto.Tuple);
+                ProcessedTuples.Add(simpleTuple);
+            } else
+            {
+                ConsoleLog("Duplicate tuple: " + simpleTuple);
+            }
+            // Add to the processed id queue
+            ProcessedTuplesID.TryAdd(dto.ID, 0);
             return result;
         }
 
@@ -392,7 +402,7 @@ namespace Replica_project
         {
             ConsoleLog("Got tuple processed question for " + req.ID);
             byte _;
-            if (ProcessedTuples.TryRemove(req.ID, out _))
+            if (ProcessedTuplesID.TryRemove(req.ID, out _))
             {
                 return true;
             }
