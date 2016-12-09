@@ -155,12 +155,25 @@ namespace Replica_project
                 List<List<string>> result = new List<List<string>>();
                 if (ExactlyFlag)
                 {
-                    if (AreOtherProcessing(dto))
+                    ConsoleLog("ExactlyFlag is set");
+                    // Set the tuple as being processed
+                    ConsoleLog("Setting " + dto.ID + " as being processed");
+                    BeingProcessedTuplesID.TryAdd(dto.ID, 0);
+
+                    byte _;
+                    // Ignore ID if already processed
+                    // This garantees exactly-once for same replica
+                    if (ProcessedTuplesID.TryGetValue(dto.ID, out _)) { continue; }
+                    ConsoleLog("Tuple was not processed here");
+
+                    if (!AreOtherProcessing(dto))
                     {
+                        ConsoleLog("Other are not processing.");
                         result = ProcessingOperation(dto);
                     }
                     else
                     {
+                        BeingProcessedTuplesID.TryRemove(dto.ID, out _);
                         // Add the tuple to the input again, in case the guy processing crashes
                         InBuffer.Add(dto);
                         // Check next tuple
@@ -183,7 +196,7 @@ namespace Replica_project
                             PuppetMaster.SendMsg(MyOperator.Id.Item1 + "#" + MyOperator.Id.Item2 + ": " + msg);
                         }
                         // Send asynchronously
-                        Task.Run(() => SendTuple(tuple));
+                        Task.Run(() => SendTuple(tuple, dto.ID));
                     }
                 });
 
@@ -224,7 +237,7 @@ namespace Replica_project
                     {
                         id = TupleCounter;
                     }
-                    dto.ID = OPAndRep.ToString() + id;
+                    dto.ID = OPAndRep.Item1 + id;
                     if (MyOperator.DownIps.Count() > 0)
                     {
                         dto.Receiver = MyOperator.DownIps[GetDownStream(tuple)].ToString();
@@ -257,7 +270,7 @@ namespace Replica_project
             return result;
         }
 
-        private void SendTuple(List<string> tuple)
+        private void SendTuple(List<string> tuple, string idPrev)
         {
             ConsoleLog("Sending tuple downstream...");
             while (MyOperator.DownIps.Count > 0)
@@ -294,19 +307,14 @@ namespace Replica_project
                     }
                 }
             }
+            byte _;
+            BeingProcessedTuplesID.TryRemove(idPrev, out _);
             ConsoleLog("No downstream available.");
         }
 
         // Makes sure tuple with the given ID is not being processed elsewhere
         private bool AreOtherProcessing(DTO dto)
         {
-            byte _;
-            // Ignore ID if already processed
-            // This garantees exactly-once for same replica
-            if (ProcessedTuplesID.TryGetValue(dto.ID, out _)) { return false; }
-
-            // Set the tuple as being processed
-            BeingProcessedTuplesID.TryAdd(dto.ID, 0);
 
             // If any other replica is processing this tuple
             foreach (IReplica replica in OtherReplicas)
@@ -315,7 +323,7 @@ namespace Replica_project
                 {
                     if (replica.BeingProcessed(dto.ID))
                     {
-                        return false;
+                        return true;
                     }
                 } catch (SocketException e)
                 {
@@ -331,7 +339,7 @@ namespace Replica_project
                     throw;
                 }
             }
-            return true;
+            return false;
         }
 
         // Identical to AtLeastOnce, but changes processed and beingprocessed status, as well as
@@ -504,18 +512,21 @@ namespace Replica_project
 
         public bool BeingProcessed(string id)
         {
+            ConsoleLog("Got being processed question for: " + id);
             byte _;
             bool status = false;
             // Don't allow touching on being processed if someone is making questions
             lock (BeingProcessedLock)
             {
-                status = BeingProcessedTuplesID.TryGetValue(id, out _);
+                status = BeingProcessedTuplesID.TryGetValue(id, out _) || ProcessedTuplesID.TryGetValue(id, out _);
             }
+            ConsoleLog("Returning " + status);
             return status;
         }
 
         public void SetAsProcessed(string id)
         {
+            ConsoleLog("Got set as processed for " + id);
             ProcessedTuplesID.TryAdd(id, 0);
         }
     }
