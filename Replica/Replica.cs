@@ -45,7 +45,6 @@ namespace Replica_project
 
         // Semantics related
         private SemanticDel MySemantic { get; set; }
-        private HashSet<string> ProcessedTuples { get; set; } = new HashSet<string>();
         private ConcurrentDictionary<string, byte> ProcessedTuplesID { get; set; } = new ConcurrentDictionary<string, byte>();
         private const int PROCESS_TIMEOUT = 2000;
         private Object TupleCounterLock = new Object();
@@ -142,9 +141,19 @@ namespace Replica_project
                     while (CurrStatus != EStatus.RUNNING)
                         Monitor.Wait(MyOperator);
                 }
-                
+
+                byte _;
+                // Exactly-once starts here
+                if (ProcessedTuplesID.TryGetValue(dto.ID, out _)) { continue; }
+                // set processing = X
+                // foreach other replica
+                    // check if being processed or already processed
                 // Process the tuple
                 List<List<string>> result = ProcessingOperation(dto);
+
+                //verificar se não foi já processado, por mim e por outras replicas (notificar que vais processar este tuplo)
+                //caso já tenha sido processado ou esteja a ser processado, continue;
+                //no fim do processamento, avisar que já foi processado às outras replicas, adicionar aos processados (replicas primeiro, meus no final)
 
                 // Throw this to someone else, my cycle is for processing only
                 Task.Run(() =>
@@ -171,7 +180,7 @@ namespace Replica_project
 
         public bool processRequest(DTO blob)
         {
-            ConsoleLog("Received a tuple from " + blob.Sender);
+            ConsoleLog("Received a tuple: " + blob.ID);
             InBuffer.Add(blob);
             return true;
         }
@@ -200,8 +209,12 @@ namespace Replica_project
                     DTO dto = new DTO();
                     dto.Sender = MyUri.ToString();
                     dto.Tuple = tuple;
-                    // No point in having an ID when reading from file
-                    dto.ID = "";
+                    int id;
+                    lock (TupleCounterLock)
+                    {
+                        id = TupleCounter;
+                    }
+                    dto.ID = OPAndRep.ToString() + id;
                     if (MyOperator.DownIps.Count() > 0)
                     {
                         dto.Receiver = MyOperator.DownIps[GetDownStream(tuple)].ToString();
@@ -226,17 +239,9 @@ namespace Replica_project
         
         private List<List<string>> ProcessingOperation(DTO dto)
         {
-            string simpleTuple = String.Join(",", dto.Tuple);
-            List<List<string>> result = new List<List<string>>();
-            if (!ProcessedTuples.Contains(simpleTuple))
-            {
-                ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
-                result = MyOperator.Spec.processTuple(dto.Tuple);
-                ProcessedTuples.Add(simpleTuple);
-            } else
-            {
-                ConsoleLog("Duplicate tuple: " + simpleTuple);
-            }
+            
+            ConsoleLog("Processing " + String.Join(",", dto.Tuple.ToArray()));
+            List<List<string>> result = MyOperator.Spec.processTuple(dto.Tuple);
             // Add to the processed id queue
             ProcessedTuplesID.TryAdd(dto.ID, 0);
             return result;
@@ -403,7 +408,7 @@ namespace Replica_project
         {
             ConsoleLog("Got tuple processed question for " + req.ID);
             byte _;
-            if (ProcessedTuplesID.TryRemove(req.ID, out _))
+            if (ProcessedTuplesID.TryGetValue(req.ID, out _))
             {
                 return true;
             }
