@@ -148,13 +148,20 @@ namespace DADStorm.PuppetMaster
                 // Seems like a good time to try and connect to the PCS that should be on this IP
                 AddAndTestPCS(ProcessCreationService.BuildURI(uri.Host));
                 // Add this operator to the list
+                
+            }
+            int replica_id = 0;
+            foreach (var uri in uris)
+            {
                 opList.Add(new Operator(
-                    new Tuple<string, int>(opID, i),
+                    new Tuple<string, int>(opID, replica_id++),
                     ProcessCreationService.BuildURI(uri.Host),
                     input,
                     uri.Port,
-                    routing
-                ));
+                    routing,
+                    uris.Select(x => x.ToString()).Except(new string[] { uri.ToString() }).ToList()
+                    )
+                );
             }
 
             int op_keyword = (int)EConfig.ADDR_START + replicas;

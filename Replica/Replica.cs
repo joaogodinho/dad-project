@@ -69,6 +69,7 @@ namespace Replica_project
             PCS = (IProcessCreationService)Activator.GetObject(typeof(IProcessCreationService), myurl);
             PuppetMaster = (IPuppet)Activator.GetObject(typeof(IReplica), pmurl);
             MyOperator = PCS.getOperator(OPAndRep);
+            Console.WriteLine("My Replicas are @ " + String.Join(";",MyOperator.ReplicasUris));
             SetRouting(MyOperator.Routing);
 
             TupleCounter = 0;

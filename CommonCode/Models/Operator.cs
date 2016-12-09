@@ -20,9 +20,11 @@ namespace CommonCode.Models
         public Tuple<string, string> Routing { get; set; }
         public OperatorSpec Spec { get; set; }
         public IReplica Replica { get; set; }
+        public List<string> ReplicasUris { get; set; }
 
-        public Operator(Tuple<string, int> id, string pcs, string input, int port, Tuple<string, string> routing)
+        public Operator(Tuple<string, int> id, string pcs, string input, int port, Tuple<string, string> routing,List<string> myreplicas)
         {
+            ReplicasUris = myreplicas;
             Id = id;
             PCS = pcs;
             Input = input;
