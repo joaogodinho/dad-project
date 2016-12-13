@@ -50,6 +50,8 @@ namespace Replica_project
         private IPuppet PuppetMaster { get; set; }
         private Object DownIpsLock = new Object();
 
+        private int ProcessedTuples = 0;
+
         // Semantics related
         private SemanticDel MySemantic { get; set; }
         private ConcurrentDictionary<string, byte> ProcessedTuplesID { get; set; } = new ConcurrentDictionary<string, byte>();
@@ -175,7 +177,7 @@ namespace Replica_project
                     {
                         ConsoleLog("Other are not processing.");
                         result = ProcessingOperation(dto);
-                        
+                        ProcessedTuples++;
                     }
                     else
                     {
@@ -188,6 +190,7 @@ namespace Replica_project
                 } else
                 {
                     result = ProcessingOperation(dto);
+                    ProcessedTuples++;
                 }
 
                 // Throw this to someone else, my cycle is for processing only
@@ -292,8 +295,8 @@ namespace Replica_project
                     }
                 }
                 // Add to the processed id queue
-                ProcessedTuplesID.TryAdd(dto.ID, 0);
             }
+            ProcessedTuplesID.TryAdd(dto.ID, 0);
             return result;
         }
 
@@ -328,10 +331,10 @@ namespace Replica_project
                 } catch (SocketException e)
                 {
                     ConsoleLog("Downstream is down, rerouting...");
-                    lock (DownIpsLock)
-                    {
-                        MyOperator.DownIps.RemoveAt(index);
-                    }
+                    //lock (DownIpsLock)
+                    //{
+                    //    MyOperator.DownIps.RemoveAt(index);
+                    //}
                 }
             }
             byte _;
@@ -381,6 +384,18 @@ namespace Replica_project
         // Keep firing until there is a confirmation is was processed
         private void AtLeastOnce(IReplica replica, DTO req)
         {
+
+            //UNCOMMENT ME FOR DUPLICATED ENTRIES TEST
+            //if(MyOperator.Id.Item1 == "OP1")
+            //{
+            //    foreach (Uri uri in MyOperator.DownIps)
+            //    {
+            //        var downRep = (IReplica)Activator.GetObject(typeof(IReplica), uri.ToString());
+            //        downRep.processRequest(req);
+            //    }
+            //    return;
+            //}
+
             bool answer_received = false;
             while (!answer_received)
             {
@@ -471,7 +486,7 @@ namespace Replica_project
                     result += "UNKNOWN";
                     break;
             }
-            result += " " + ProcessedTuplesID.Count + " Tuples processed";
+            result += " " + ProcessedTuples +" Tuples processed";
             ConsoleLog(result);
         }
 
